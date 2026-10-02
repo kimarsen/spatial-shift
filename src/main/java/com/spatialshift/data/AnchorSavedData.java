@@ -29,7 +29,8 @@ public class AnchorSavedData extends WorldSavedData {
     }
 
     public static AnchorSavedData get(World world) {
-        MapStorage storage = world.getMapStorage();
+        World rootWorld = (world.getMinecraftServer() != null) ? world.getMinecraftServer().getEntityWorld() : world;
+        MapStorage storage = rootWorld.getMapStorage();
         if (storage == null) {
             return new AnchorSavedData();
         }

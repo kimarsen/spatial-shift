@@ -13,6 +13,7 @@ import com.spatialshift.tileentity.TileEntityTeleportCore;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.CapabilityManager;
 import net.minecraftforge.fml.common.Mod;
@@ -32,7 +33,7 @@ public class SpatialShift {
 
     public static final String MODID = "spatialshift";
     public static final String NAME = "Spatial Shift";
-    public static final String VERSION = "1.0.0";
+    public static final String VERSION = "1.1.0";
 
     @Mod.Instance(MODID)
     public static SpatialShift instance;
@@ -43,7 +44,6 @@ public class SpatialShift {
             return new ItemStack(ModItems.SELECTION_WAND);
         }
     };
-
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
@@ -63,6 +63,8 @@ public class SpatialShift {
             TileEntityAnchor.class,
             new ResourceLocation(MODID, "spatial_anchor")
         );
+
+        ForgeChunkManager.setForcedChunkLoadingCallback(instance, (tickets, world) -> {});
 
         MinecraftForge.EVENT_BUS.register(new ModBlocks());
         MinecraftForge.EVENT_BUS.register(new ModItems());

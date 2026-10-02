@@ -27,14 +27,15 @@ public class ChunkSafetyManager {
         }
 
         ticket = ForgeChunkManager.requestTicket(SpatialShift.instance, world, ForgeChunkManager.Type.NORMAL);
-        if (ticket == null) {
-            return false;
+        if (ticket != null) {
+            for (ChunkPos cp : loadedChunks) {
+                ForgeChunkManager.forceChunk(ticket, cp);
+            }
         }
 
         for (ChunkPos cp : loadedChunks) {
-            ForgeChunkManager.forceChunk(ticket, cp);
             Chunk chunk = world.getChunkProvider().loadChunk(cp.x, cp.z);
-            if (chunk == null || !chunk.isPopulated()) {
+            if (chunk == null) {
                 release();
                 return false;
             }

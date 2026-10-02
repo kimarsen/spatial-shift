@@ -24,7 +24,14 @@ import java.util.Set;
 
 public class TeleportEngine {
 
+    private static final int MAX_CORE_RADIUS = 50;
+
     public static void executeTeleport(WorldServer world, EntityPlayerMP player, TileEntityTeleportCore core, BlockPos requestedTarget, int targetDim, TeleportMode mode) {
+        if (!core.hasFuel()) {
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
+            return;
+        }
+
         IPlayerSelection selection = player.getCapability(PlayerSelection.CAPABILITY, null);
         if (selection == null || selection.getSelectedPositions().isEmpty()) {
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.selection_empty"), true);
@@ -45,6 +52,12 @@ public class TeleportEngine {
         LongIterator iter = positions.iterator();
         while (iter.hasNext()) {
             BlockPos pos = BlockPos.fromLong(iter.nextLong());
+
+            if (Math.abs(pos.getX() - corePos.getX()) > MAX_CORE_RADIUS || Math.abs(pos.getZ() - corePos.getZ()) > MAX_CORE_RADIUS) {
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.area_outside_core_range"), true);
+                return;
+            }
+
             relativeOffsets.add(pos.subtract(corePos));
 
             minX = Math.min(minX, pos.getX());
@@ -56,7 +69,8 @@ public class TeleportEngine {
         }
 
         int height = maxY - minY + 1;
-        BlockPos initialTarget = computeTargetOrigin(world, requestedTarget, mode, height);
+        int minRelativeY = minY - corePos.getY();
+        BlockPos initialTarget = computeTargetOrigin(world, requestedTarget, mode, height, minRelativeY);
 
         ChunkSafetyManager chunkManager = new ChunkSafetyManager(world);
         if (!chunkManager.lockChunks(initialTarget, relativeOffsets)) {
@@ -68,6 +82,12 @@ public class TeleportEngine {
         BlockPos validTarget = CollisionDetector.findNearestValidPosition(world, initialTarget, relativeOffsets, 64);
         if (validTarget == null) {
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_free_space"), true);
+            chunkManager.release();
+            return;
+        }
+
+        if (!core.consumeFuel()) {
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
             chunkManager.release();
             return;
         }
@@ -85,13 +105,17 @@ public class TeleportEngine {
         player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.teleport_success"), true);
     }
 
-    private static BlockPos computeTargetOrigin(WorldServer world, BlockPos target, TeleportMode mode, int height) {
+    private static BlockPos computeTargetOrigin(WorldServer world, BlockPos target, TeleportMode mode, int height, int minRelativeY) {
         if (mode == TeleportMode.AIR) {
             int y = Math.min(target.getY() + 20, 255 - height);
             return new BlockPos(target.getX(), y, target.getZ());
         } else {
             BlockPos ground = world.getTopSolidOrLiquidBlock(target);
-            return new BlockPos(target.getX(), ground.getY(), target.getZ());
+            int targetY = ground.getY() + 1 - minRelativeY;
+            if (targetY + height > 255) {
+                targetY = 255 - height;
+            }
+            return new BlockPos(target.getX(), targetY, target.getZ());
         }
     }
 

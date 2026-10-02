@@ -52,7 +52,12 @@ public class PacketTeleportRequest implements IMessage {
             WorldServer world = player.getServerWorld();
 
             world.addScheduledTask(() -> {
-                if (player.getDistanceSq(message.corePos) > 64.0) {
+                double distSq = player.getDistanceSq(
+                    message.corePos.getX() + 0.5D,
+                    message.corePos.getY() + 0.5D,
+                    message.corePos.getZ() + 0.5D
+                );
+                if (distSq > 100.0D) {
                     return;
                 }
 
@@ -62,9 +67,6 @@ public class PacketTeleportRequest implements IMessage {
                 }
 
                 TileEntityTeleportCore core = (TileEntityTeleportCore) te;
-                if (!core.consumeFuel()) {
-                    return;
-                }
 
                 TeleportEngine.executeTeleport(
                     world,

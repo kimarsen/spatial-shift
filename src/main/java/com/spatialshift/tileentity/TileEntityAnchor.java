@@ -61,6 +61,22 @@ public class TileEntityAnchor extends TileEntity {
     }
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        if (world != null && !world.isRemote) {
+            updateSavedData();
+        }
+    }
+
+    @Override
+    public void validate() {
+        super.validate();
+        if (world != null && !world.isRemote) {
+            updateSavedData();
+        }
+    }
+
+    @Override
     public void readFromNBT(NBTTagCompound compound) {
         super.readFromNBT(compound);
         if (compound.hasUniqueId("Owner")) {

@@ -1,5 +1,6 @@
 package com.spatialshift.network.packet;
 
+import com.spatialshift.client.ClientAnchorCache;
 import com.spatialshift.data.AnchorAccess;
 import com.spatialshift.data.AnchorData;
 import com.spatialshift.gui.GuiTeleportCore;
@@ -66,6 +67,7 @@ public class PacketSyncAnchors implements IMessage {
         @Override
         public IMessage onMessage(PacketSyncAnchors message, MessageContext ctx) {
             Minecraft.getMinecraft().addScheduledTask(() -> {
+                ClientAnchorCache.update(message.anchors);
                 GuiScreen currentScreen = Minecraft.getMinecraft().currentScreen;
                 if (currentScreen instanceof GuiTeleportCore) {
                     ((GuiTeleportCore) currentScreen).updateAnchors(message.anchors);

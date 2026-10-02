@@ -1,6 +1,7 @@
 package com.spatialshift.gui;
 
 import com.spatialshift.SpatialShift;
+import com.spatialshift.client.ClientAnchorCache;
 import com.spatialshift.container.ContainerTeleportCore;
 import com.spatialshift.data.AnchorData;
 import com.spatialshift.data.TeleportMode;
@@ -11,6 +12,7 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
 import net.minecraft.client.renderer.GlStateManager;
+import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
@@ -63,11 +65,17 @@ public class GuiTeleportCore extends GuiContainer {
         yField.setText(String.valueOf(pos.getY()));
         zField.setText(String.valueOf(pos.getZ()));
 
-        buttonTargetType = addButton(new GuiButton(10, startX + 130, startY + 18, 38, 16, "Coords"));
-        buttonMode = addButton(new GuiButton(11, startX + 10, startY + 36, 60, 16, "Landing"));
+        availableAnchors.clear();
+        availableAnchors.addAll(ClientAnchorCache.getAnchors());
+        if (!availableAnchors.isEmpty() && selectedAnchorIndex == -1) {
+            selectedAnchorIndex = 0;
+        }
+
+        buttonTargetType = addButton(new GuiButton(10, startX + 130, startY + 18, 38, 16, getTargetTypeText()));
+        buttonMode = addButton(new GuiButton(11, startX + 10, startY + 36, 60, 16, getModeText()));
         buttonPrevAnchor = addButton(new GuiButton(12, startX + 75, startY + 36, 16, 16, "<"));
         buttonNextAnchor = addButton(new GuiButton(13, startX + 152, startY + 36, 16, 16, ">"));
-        buttonTeleport = addButton(new GuiButton(14, startX + 105, startY + 54, 63, 20, "Teleport"));
+        buttonTeleport = addButton(new GuiButton(14, startX + 105, startY + 54, 63, 20, I18n.format("gui.spatialshift.button_teleport")));
 
         updateButtonStates();
     }
@@ -76,19 +84,29 @@ public class GuiTeleportCore extends GuiContainer {
         availableAnchors.clear();
         availableAnchors.addAll(anchors);
         if (!availableAnchors.isEmpty()) {
-            selectedAnchorIndex = 0;
+            if (selectedAnchorIndex < 0 || selectedAnchorIndex >= availableAnchors.size()) {
+                selectedAnchorIndex = 0;
+            }
         } else {
             selectedAnchorIndex = -1;
         }
         updateButtonStates();
     }
 
+    private String getTargetTypeText() {
+        return useAnchorTarget ? I18n.format("gui.spatialshift.target_anchor") : I18n.format("gui.spatialshift.target_coords");
+    }
+
+    private String getModeText() {
+        return teleportMode == TeleportMode.LANDING ? I18n.format("gui.spatialshift.mode_landing") : I18n.format("gui.spatialshift.mode_air");
+    }
+
     private void updateButtonStates() {
         if (buttonTargetType != null) {
-            buttonTargetType.displayString = useAnchorTarget ? "Anchor" : "Coords";
+            buttonTargetType.displayString = getTargetTypeText();
         }
         if (buttonMode != null) {
-            buttonMode.displayString = teleportMode == TeleportMode.LANDING ? "Landing" : "Air";
+            buttonMode.displayString = getModeText();
         }
         boolean hasAnchors = !availableAnchors.isEmpty() && useAnchorTarget;
         if (buttonPrevAnchor != null) {
@@ -184,7 +202,7 @@ public class GuiTeleportCore extends GuiContainer {
             yField.drawTextBox();
             zField.drawTextBox();
         } else {
-            String anchorText = "No Anchors";
+            String anchorText = I18n.format("gui.spatialshift.no_anchors");
             if (selectedAnchorIndex >= 0 && selectedAnchorIndex < availableAnchors.size()) {
                 anchorText = availableAnchors.get(selectedAnchorIndex).getName();
             }
@@ -194,7 +212,7 @@ public class GuiTeleportCore extends GuiContainer {
 
     @Override
     protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
-        fontRenderer.drawString("Spatial Core", 8, 6, 0x404040);
-        fontRenderer.drawString("Fuel", 54, 57, 0x404040);
+        fontRenderer.drawString(I18n.format("gui.spatialshift.title"), 8, 6, 0x404040);
+        fontRenderer.drawString(I18n.format("gui.spatialshift.fuel"), 54, 57, 0x404040);
     }
 }
