@@ -1,0 +1,26 @@
+itemGroup.spatialshift=Spatial Shift
+
+tile.spatialshift.teleport_core.name=Spatial Teleport Core
+tile.spatialshift.core_frame.name=Core Frame Block
+tile.spatialshift.spatial_anchor.name=Spatial Anchor
+
+item.spatialshift.selection_wand.name=Spatial Selection Wand
+item.spatialshift.dimensional_fuel.name=Dimensional Catalyst
+
+tooltip.spatialshift.wand.help1=Left-Click: Set primary position
+tooltip.spatialshift.wand.help2=Right-Click: Set secondary pos / Toggle block
+tooltip.spatialshift.wand.help3=Shift + Right-Click: Switch mode (Box / Voxel)
+tooltip.spatialshift.fuel.desc=Catalyst used to fuel the Spatial Teleport Core
+
+message.spatialshift.mode_changed=Selection mode set to: %s
+message.spatialshift.pos1_set=Primary position set: [%d, %d, %d] (Selected: %s)
+message.spatialshift.pos2_set=Secondary position set: [%d, %d, %d] (Selected: %s)
+message.spatialshift.block_added=Block added: [%d, %d, %d] (Selected: %s)
+message.spatialshift.block_removed=Block removed: [%d, %d, %d] (Selected: %s)
+message.spatialshift.multiblock_invalid=Multiblock structure is incomplete or obstructed!
+message.spatialshift.anchor_access_changed=Anchor access mode set to: %s
+message.spatialshift.anchor_not_owner=You are not the owner of this anchor!
+message.spatialshift.selection_empty=No blocks selected with the Spatial Wand!
+message.spatialshift.chunk_load_failed=Target destination chunks could not be loaded safely!
+message.spatialshift.no_free_space=No collision-free space found near target location!
+message.spatialshift.teleport_success=Spatial relocation completed successfully!

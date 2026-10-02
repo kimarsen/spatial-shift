@@ -1,0 +1,26 @@
+itemGroup.spatialshift=Spatial Shift
+
+tile.spatialshift.teleport_core.name=Ядро пространственного переноса
+tile.spatialshift.core_frame.name=Каркасный блок ядра
+tile.spatialshift.spatial_anchor.name=Пространственный якорь
+
+item.spatialshift.selection_wand.name=Жезл пространственного выделения
+item.spatialshift.dimensional_fuel.name=Пространственный катализатор
+
+tooltip.spatialshift.wand.help1=ЛКМ: Выбрать первую точку
+tooltip.spatialshift.wand.help2=ПКМ: Выбрать вторую точку / Переключить блок
+tooltip.spatialshift.wand.help3=Shift + ПКМ: Сменить режим (Область / Воксели)
+tooltip.spatialshift.fuel.desc=Катализатор для питания Ядра пространственного переноса
+
+message.spatialshift.mode_changed=Режим выделения изменен на: %s
+message.spatialshift.pos1_set=Первая точка установлена: [%d, %d, %d] (Выбрано: %s)
+message.spatialshift.pos2_set=Вторая точка установлена: [%d, %d, %d] (Выбрано: %s)
+message.spatialshift.block_added=Блок добавлен в область: [%d, %d, %d] (Выбрано: %s)
+message.spatialshift.block_removed=Блок убран из области: [%d, %d, %d] (Выбрано: %s)
+message.spatialshift.multiblock_invalid=Механизм 3х3 не завершен или заблокирован сверху!
+message.spatialshift.anchor_access_changed=Доступ к якорю изменен на: %s
+message.spatialshift.anchor_not_owner=Вы не являетесь владельцем этого якоря!
+message.spatialshift.selection_empty=Жезлом не выбрано ни одного блока!
+message.spatialshift.chunk_load_failed=Не удалось безопасно прогрузить целевые чанки!
+message.spatialshift.no_free_space=Не найдено свободного места вблизи целевых координат!
+message.spatialshift.teleport_success=Пространственный перенос успешно завершен!
