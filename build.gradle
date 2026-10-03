@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.spatialshift'
-version = '1.1.0'
+version = '1.2.0'
 
 java {
     toolchain {
@@ -23,4 +23,15 @@ tasks.withType(JavaCompile) {
 
 processResources {
     filteringCharset = 'UTF-8'
+}
+
+jar {
+    from('src/main/resources/assets/spatialshift/lang/ru_ru.lang') {
+        into('assets/spatialshift/lang')
+        rename { 'ru_RU.lang' }
+    }
+    from('src/main/resources/assets/spatialshift/lang/en_us.lang') {
+        into('assets/spatialshift/lang')
+        rename { 'en_US.lang' }
+    }
 }

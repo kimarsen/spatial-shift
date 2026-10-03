@@ -55,9 +55,10 @@ public class BlockAnchor extends Block implements ITileEntityProvider {
             if (anchor.getOwnerUuid().equals(player.getUniqueID())) {
                 anchor.toggleAccess();
                 TextFormatting color = anchor.getAccess() == AnchorAccess.PUBLIC ? TextFormatting.GREEN : TextFormatting.RED;
+                TextComponentTranslation accessName = new TextComponentTranslation("access.spatialshift." + anchor.getAccess().name().toLowerCase());
                 player.sendStatusMessage(new TextComponentTranslation(
                     "message.spatialshift.anchor_access_changed",
-                    color + anchor.getAccess().name()
+                    color + accessName.getFormattedText()
                 ), true);
             } else {
                 player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.anchor_not_owner"), true);

@@ -3,7 +3,7 @@
     "modid": "spatialshift",
     "name": "Spatial Shift",
     "description": "Safe structure teleportation with voxel collision detection and anchor mechanics.",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "mcversion": "1.12.2",
     "url": "",
     "updateUrl": "",

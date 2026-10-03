@@ -2,6 +2,7 @@ package com.spatialshift.capability;
 
 import com.spatialshift.SpatialShift;
 import com.spatialshift.data.WandMode;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.entity.Entity;
@@ -111,6 +112,26 @@ public class PlayerSelection implements IPlayerSelection {
         selectedPositions.clear();
         for (long p : packed) {
             selectedPositions.add(p);
+        }
+    }
+
+    @Override
+    public void shift(BlockPos offset) {
+        if (primaryPos != null) {
+            primaryPos = primaryPos.add(offset);
+        }
+        if (secondaryPos != null) {
+            secondaryPos = secondaryPos.add(offset);
+        }
+        if (!selectedPositions.isEmpty()) {
+            LongSet shifted = new LongOpenHashSet(selectedPositions.size());
+            LongIterator iter = selectedPositions.iterator();
+            while (iter.hasNext()) {
+                BlockPos pos = BlockPos.fromLong(iter.nextLong());
+                shifted.add(pos.add(offset).toLong());
+            }
+            selectedPositions.clear();
+            selectedPositions.addAll(shifted);
         }
     }
 

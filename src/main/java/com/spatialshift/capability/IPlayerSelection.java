@@ -31,4 +31,6 @@ public interface IPlayerSelection {
     void rebuildFromBox();
 
     void setFromPackedArray(long[] packed);
+ 
+    void shift(BlockPos offset);
 }

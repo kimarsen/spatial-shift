@@ -27,6 +27,11 @@ message.spatialshift.chunk_load_failed=Target destination chunks could not be lo
 message.spatialshift.no_free_space=No collision-free space found near target location!
 message.spatialshift.teleport_success=Spatial relocation completed successfully!
 
+mode.spatialshift.box=Box
+mode.spatialshift.voxel=Voxel
+access.spatialshift.public=Public
+access.spatialshift.private=Private
+
 gui.spatialshift.title=Spatial Core
 gui.spatialshift.fuel=Fuel
 gui.spatialshift.target_coords=Coords

@@ -50,9 +50,10 @@ public class ItemSelectionWand extends Item {
                     selection.setMode(nextMode);
                     syncSelection(player, selection);
 
+                    TextComponentTranslation modeName = new TextComponentTranslation("mode.spatialshift." + nextMode.name().toLowerCase());
                     TextComponentTranslation msg = new TextComponentTranslation(
                         "message.spatialshift.mode_changed",
-                        TextFormatting.LIGHT_PURPLE + nextMode.name()
+                        TextFormatting.LIGHT_PURPLE + modeName.getFormattedText()
                     );
                     player.sendStatusMessage(msg, true);
                 }
@@ -132,7 +133,7 @@ public class ItemSelectionWand extends Item {
     public static void syncSelection(EntityPlayer player, IPlayerSelection selection) {
         if (player instanceof EntityPlayerMP) {
             PacketHandler.sendTo(
-                new PacketSyncSelection(selection.getMode(), selection.getSelectedPositions().toLongArray()),
+                new PacketSyncSelection(selection.getMode(), selection.getPrimaryPos(), selection.getSecondaryPos(), selection.getSelectedPositions().toLongArray()),
                 (EntityPlayerMP) player
             );
         }

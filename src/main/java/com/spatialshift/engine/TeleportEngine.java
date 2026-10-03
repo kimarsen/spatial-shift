@@ -4,6 +4,7 @@ import com.spatialshift.capability.IPlayerSelection;
 import com.spatialshift.capability.PlayerSelection;
 import com.spatialshift.data.TeleportMode;
 import com.spatialshift.fx.TeleportEffects;
+import com.spatialshift.item.ItemSelectionWand;
 import com.spatialshift.tileentity.TileEntityTeleportCore;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -26,7 +27,7 @@ public class TeleportEngine {
 
     private static final int MAX_CORE_RADIUS = 50;
 
-    public static void executeTeleport(WorldServer world, EntityPlayerMP player, TileEntityTeleportCore core, BlockPos requestedTarget, int targetDim, TeleportMode mode) {
+    public static void executeTeleport(WorldServer world, EntityPlayerMP player, TileEntityTeleportCore core, BlockPos requestedTarget, int targetDim, TeleportMode mode, boolean isAnchorTarget) {
         if (!core.hasFuel()) {
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
             return;
@@ -68,9 +69,9 @@ public class TeleportEngine {
             maxZ = Math.max(maxZ, pos.getZ());
         }
 
-        int height = maxY - minY + 1;
         int minRelativeY = minY - corePos.getY();
-        BlockPos initialTarget = computeTargetOrigin(world, requestedTarget, mode, height, minRelativeY);
+        int maxRelativeY = maxY - corePos.getY();
+        BlockPos initialTarget = computeTargetOrigin(world, requestedTarget, mode, isAnchorTarget, maxRelativeY, minRelativeY);
 
         ChunkSafetyManager chunkManager = new ChunkSafetyManager(world);
         if (!chunkManager.lockChunks(initialTarget, relativeOffsets)) {
@@ -93,10 +94,17 @@ public class TeleportEngine {
         }
 
         VoxelSnapshot snapshot = createSnapshot(world, corePos, relativeOffsets, minX, minY, minZ, maxX, maxY, maxZ);
+        if (!snapshot.getEntities().contains(player)) {
+            snapshot.getEntities().add(player);
+        }
 
         pasteSnapshot(world, validTarget, snapshot);
         EntityRelocator.relocateEntities(snapshot.getEntities(), corePos, validTarget);
         clearSource(world, corePos, relativeOffsets);
+
+        BlockPos displacement = validTarget.subtract(corePos);
+        selection.shift(displacement);
+        ItemSelectionWand.syncSelection(player, selection);
 
         AxisAlignedBB destinationBounds = computeShiftedBounds(snapshot.getBounds(), corePos, validTarget);
         TeleportEffects.playEffects(world, validTarget, destinationBounds, snapshot.getEntities());
@@ -105,17 +113,37 @@ public class TeleportEngine {
         player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.teleport_success"), true);
     }
 
-    private static BlockPos computeTargetOrigin(WorldServer world, BlockPos target, TeleportMode mode, int height, int minRelativeY) {
-        if (mode == TeleportMode.AIR) {
-            int y = Math.min(target.getY() + 20, 255 - height);
-            return new BlockPos(target.getX(), y, target.getZ());
-        } else {
-            BlockPos ground = world.getTopSolidOrLiquidBlock(target);
-            int targetY = ground.getY() + 1 - minRelativeY;
-            if (targetY + height > 255) {
-                targetY = 255 - height;
+    private static BlockPos computeTargetOrigin(WorldServer world, BlockPos target, TeleportMode mode, boolean isAnchorTarget, int maxRelativeY, int minRelativeY) {
+        if (!isAnchorTarget) {
+            int targetY = mode == TeleportMode.AIR ? target.getY() + 20 : target.getY();
+            if (targetY + maxRelativeY > 255) {
+                targetY = 255 - maxRelativeY;
+            }
+            if (targetY + minRelativeY < 0) {
+                targetY = -minRelativeY;
             }
             return new BlockPos(target.getX(), targetY, target.getZ());
+        } else {
+            if (mode == TeleportMode.AIR) {
+                int targetY = target.getY() + 20;
+                if (targetY + maxRelativeY > 255) {
+                    targetY = 255 - maxRelativeY;
+                }
+                if (targetY + minRelativeY < 0) {
+                    targetY = -minRelativeY;
+                }
+                return new BlockPos(target.getX(), targetY, target.getZ());
+            } else {
+                BlockPos ground = world.getTopSolidOrLiquidBlock(target);
+                int targetY = ground.getY() + 1 - minRelativeY;
+                if (targetY + maxRelativeY > 255) {
+                    targetY = 255 - maxRelativeY;
+                }
+                if (targetY + minRelativeY < 0) {
+                    targetY = -minRelativeY;
+                }
+                return new BlockPos(target.getX(), targetY, target.getZ());
+            }
         }
     }
 

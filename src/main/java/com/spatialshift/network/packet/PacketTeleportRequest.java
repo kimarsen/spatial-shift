@@ -18,15 +18,17 @@ public class PacketTeleportRequest implements IMessage {
     private BlockPos targetPos;
     private int targetDimension;
     private TeleportMode mode;
+    private boolean isAnchorTarget;
 
     public PacketTeleportRequest() {
     }
 
-    public PacketTeleportRequest(BlockPos corePos, BlockPos targetPos, int targetDimension, TeleportMode mode) {
+    public PacketTeleportRequest(BlockPos corePos, BlockPos targetPos, int targetDimension, TeleportMode mode, boolean isAnchorTarget) {
         this.corePos = corePos;
         this.targetPos = targetPos;
         this.targetDimension = targetDimension;
         this.mode = mode;
+        this.isAnchorTarget = isAnchorTarget;
     }
 
     @Override
@@ -35,6 +37,7 @@ public class PacketTeleportRequest implements IMessage {
         this.targetPos = BlockPos.fromLong(buf.readLong());
         this.targetDimension = buf.readInt();
         this.mode = TeleportMode.values()[buf.readInt()];
+        this.isAnchorTarget = buf.readBoolean();
     }
 
     @Override
@@ -43,6 +46,7 @@ public class PacketTeleportRequest implements IMessage {
         buf.writeLong(targetPos.toLong());
         buf.writeInt(targetDimension);
         buf.writeInt(mode.ordinal());
+        buf.writeBoolean(isAnchorTarget);
     }
 
     public static class Handler implements IMessageHandler<PacketTeleportRequest, IMessage> {
@@ -74,7 +78,8 @@ public class PacketTeleportRequest implements IMessage {
                     core,
                     message.targetPos,
                     message.targetDimension,
-                    message.mode
+                    message.mode,
+                    message.isAnchorTarget
                 );
             });
 

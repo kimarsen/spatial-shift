@@ -161,7 +161,8 @@ public class GuiTeleportCore extends GuiContainer {
             tileEntity.getPos(),
             targetPos,
             targetDim,
-            teleportMode
+            teleportMode,
+            useAnchorTarget
         ));
 
         mc.player.closeScreen();
