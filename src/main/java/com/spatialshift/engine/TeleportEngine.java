@@ -69,6 +69,21 @@ public class TeleportEngine {
             maxZ = Math.max(maxZ, pos.getZ());
         }
 
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                BlockPos framePos = corePos.add(dx, 0, dz);
+                relativeOffsets.add(new BlockPos(dx, 0, dz));
+                selection.addPosition(framePos);
+
+                minX = Math.min(minX, framePos.getX());
+                minY = Math.min(minY, framePos.getY());
+                minZ = Math.min(minZ, framePos.getZ());
+                maxX = Math.max(maxX, framePos.getX());
+                maxY = Math.max(maxY, framePos.getY());
+                maxZ = Math.max(maxZ, framePos.getZ());
+            }
+        }
+
         int minRelativeY = minY - corePos.getY();
         int maxRelativeY = maxY - corePos.getY();
         BlockPos initialTarget = computeTargetOrigin(world, requestedTarget, mode, isAnchorTarget, maxRelativeY, minRelativeY);
@@ -80,11 +95,15 @@ public class TeleportEngine {
             return;
         }
 
-        BlockPos validTarget = CollisionDetector.findNearestValidPosition(world, initialTarget, relativeOffsets, 64);
+        BlockPos validTarget = CollisionDetector.findNearestValidPosition(world, initialTarget, relativeOffsets, corePos, 64);
         if (validTarget == null) {
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_free_space"), true);
             chunkManager.release();
             return;
+        }
+
+        if (!validTarget.equals(initialTarget)) {
+            chunkManager.lockChunks(validTarget, relativeOffsets);
         }
 
         if (!core.consumeFuel()) {
@@ -98,9 +117,9 @@ public class TeleportEngine {
             snapshot.getEntities().add(player);
         }
 
+        clearSource(world, corePos, relativeOffsets);
         pasteSnapshot(world, validTarget, snapshot);
         EntityRelocator.relocateEntities(snapshot.getEntities(), corePos, validTarget);
-        clearSource(world, corePos, relativeOffsets);
 
         BlockPos displacement = validTarget.subtract(corePos);
         selection.shift(displacement);
@@ -182,10 +201,19 @@ public class TeleportEngine {
             nbt.setInteger("y", targetPos.getY());
             nbt.setInteger("z", targetPos.getZ());
 
-            TileEntity te = TileEntity.create(world, nbt);
+            TileEntity te = world.getTileEntity(targetPos);
             if (te != null) {
-                world.setTileEntity(targetPos, te);
+                te.readFromNBT(nbt);
+                te.markDirty();
+            } else {
+                te = TileEntity.create(world, nbt);
+                if (te != null) {
+                    world.setTileEntity(targetPos, te);
+                    te.markDirty();
+                }
             }
+            IBlockState state = world.getBlockState(targetPos);
+            world.notifyBlockUpdate(targetPos, state, state, 3);
         }
     }
 

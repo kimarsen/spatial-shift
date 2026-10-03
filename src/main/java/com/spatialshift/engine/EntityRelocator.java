@@ -22,7 +22,7 @@ public class EntityRelocator {
                 EntityPlayerMP player = (EntityPlayerMP) entity;
                 player.connection.setPlayerLocation(targetX, targetY, targetZ, player.rotationYaw, player.rotationPitch);
             } else {
-                entity.setLocationAndAngles(targetX, targetY, targetZ, entity.rotationYaw, entity.rotationPitch);
+                entity.setPositionAndUpdate(targetX, targetY, targetZ);
             }
         }
     }

@@ -9,12 +9,17 @@ import java.util.Set;
 
 public class CollisionDetector {
 
-    public static boolean isAreaFree(World world, BlockPos candidateOrigin, Set<BlockPos> relativeOffsets) {
+    public static boolean isAreaFree(World world, BlockPos candidateOrigin, Set<BlockPos> relativeOffsets, BlockPos sourceOrigin) {
         for (BlockPos offset : relativeOffsets) {
             BlockPos targetPos = candidateOrigin.add(offset);
             int y = targetPos.getY();
             if (y < 0 || y > 255) {
                 return false;
+            }
+
+            BlockPos relToSource = targetPos.subtract(sourceOrigin);
+            if (relativeOffsets.contains(relToSource)) {
+                continue;
             }
 
             IBlockState state = world.getBlockState(targetPos);
@@ -26,8 +31,8 @@ public class CollisionDetector {
         return true;
     }
 
-    public static BlockPos findNearestValidPosition(World world, BlockPos initialTarget, Set<BlockPos> relativeOffsets, int maxRadius) {
-        if (isAreaFree(world, initialTarget, relativeOffsets)) {
+    public static BlockPos findNearestValidPosition(World world, BlockPos initialTarget, Set<BlockPos> relativeOffsets, BlockPos sourceOrigin, int maxRadius) {
+        if (isAreaFree(world, initialTarget, relativeOffsets, sourceOrigin)) {
             return initialTarget;
         }
 
@@ -38,10 +43,16 @@ public class CollisionDetector {
                         continue;
                     }
 
-                    for (int dy = -2; dy <= 2; dy++) {
+                    for (int dy = 0; dy <= 4; dy++) {
                         BlockPos candidate = initialTarget.add(dx, dy, dz);
-                        if (isAreaFree(world, candidate, relativeOffsets)) {
+                        if (isAreaFree(world, candidate, relativeOffsets, sourceOrigin)) {
                             return candidate;
+                        }
+                        if (dy != 0) {
+                            candidate = initialTarget.add(dx, -dy, dz);
+                            if (isAreaFree(world, candidate, relativeOffsets, sourceOrigin)) {
+                                return candidate;
+                            }
                         }
                     }
                 }

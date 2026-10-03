@@ -26,7 +26,9 @@ public class ChunkSafetyManager {
             loadedChunks.add(new ChunkPos(targetPos));
         }
 
-        ticket = ForgeChunkManager.requestTicket(SpatialShift.instance, world, ForgeChunkManager.Type.NORMAL);
+        if (ticket == null) {
+            ticket = ForgeChunkManager.requestTicket(SpatialShift.instance, world, ForgeChunkManager.Type.NORMAL);
+        }
         if (ticket != null) {
             for (ChunkPos cp : loadedChunks) {
                 ForgeChunkManager.forceChunk(ticket, cp);

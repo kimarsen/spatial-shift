@@ -86,7 +86,11 @@ public class TileEntityAnchor extends TileEntity {
             this.anchorName = compound.getString("AnchorName");
         }
         if (compound.hasKey("Access")) {
-            this.access = AnchorAccess.valueOf(compound.getString("Access"));
+            try {
+                this.access = AnchorAccess.valueOf(compound.getString("Access"));
+            } catch (IllegalArgumentException e) {
+                this.access = AnchorAccess.PUBLIC;
+            }
         }
     }
 

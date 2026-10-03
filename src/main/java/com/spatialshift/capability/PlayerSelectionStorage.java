@@ -43,7 +43,11 @@ public class PlayerSelectionStorage implements Capability.IStorage<IPlayerSelect
 
         NBTTagCompound tag = (NBTTagCompound) nbt;
         if (tag.hasKey("Mode")) {
-            instance.setMode(WandMode.valueOf(tag.getString("Mode")));
+            try {
+                instance.setMode(WandMode.valueOf(tag.getString("Mode")));
+            } catch (IllegalArgumentException e) {
+                instance.setMode(WandMode.BOX);
+            }
         }
         if (tag.hasKey("Primary")) {
             instance.setPrimaryPos(BlockPos.fromLong(tag.getLong("Primary")));

@@ -61,7 +61,12 @@ public class AnchorData {
         int dim = tag.getInteger("Dim");
         String name = tag.getString("Name");
         UUID owner = tag.getUniqueId("Owner");
-        AnchorAccess access = AnchorAccess.valueOf(tag.getString("Access"));
+        AnchorAccess access;
+        try {
+            access = AnchorAccess.valueOf(tag.getString("Access"));
+        } catch (IllegalArgumentException e) {
+            access = AnchorAccess.PUBLIC;
+        }
         return new AnchorData(pos, dim, name, owner, access);
     }
 

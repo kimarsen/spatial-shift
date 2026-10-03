@@ -115,6 +115,9 @@ public class GuiTeleportCore extends GuiContainer {
         if (buttonNextAnchor != null) {
             buttonNextAnchor.enabled = hasAnchors;
         }
+        if (buttonTeleport != null) {
+            buttonTeleport.enabled = !useAnchorTarget || !availableAnchors.isEmpty();
+        }
     }
 
     @Override
@@ -142,7 +145,10 @@ public class GuiTeleportCore extends GuiContainer {
         BlockPos targetPos;
         int targetDim = tileEntity.getWorld().provider.getDimension();
 
-        if (useAnchorTarget && selectedAnchorIndex >= 0 && selectedAnchorIndex < availableAnchors.size()) {
+        if (useAnchorTarget) {
+            if (availableAnchors.isEmpty() || selectedAnchorIndex < 0 || selectedAnchorIndex >= availableAnchors.size()) {
+                return;
+            }
             AnchorData anchor = availableAnchors.get(selectedAnchorIndex);
             targetPos = anchor.getPos();
             targetDim = anchor.getDimensionId();
@@ -215,5 +221,12 @@ public class GuiTeleportCore extends GuiContainer {
     protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
         fontRenderer.drawString(I18n.format("gui.spatialshift.title"), 8, 6, 0x404040);
         fontRenderer.drawString(I18n.format("gui.spatialshift.fuel"), 54, 57, 0x404040);
+    }
+
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        drawDefaultBackground();
+        super.drawScreen(mouseX, mouseY, partialTicks);
+        renderHoveredToolTip(mouseX, mouseY);
     }
 }
