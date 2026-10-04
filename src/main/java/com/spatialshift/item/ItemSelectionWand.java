@@ -9,12 +9,14 @@ import com.spatialshift.network.packet.PacketSyncSelection;
 import net.minecraft.client.util.ITooltipFlag;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.EnumActionResult;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.util.text.TextFormatting;
@@ -49,6 +51,7 @@ public class ItemSelectionWand extends Item {
                     WandMode nextMode = selection.getMode().next();
                     selection.setMode(nextMode);
                     syncSelection(player, selection);
+                    world.playSound(null, player.posX, player.posY, player.posZ, SoundEvents.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.PLAYERS, 0.8F, 1.2F);
 
                     TextComponentTranslation modeName = new TextComponentTranslation("mode.spatialshift." + nextMode.name().toLowerCase());
                     TextComponentTranslation msg = new TextComponentTranslation(
@@ -75,13 +78,16 @@ public class ItemSelectionWand extends Item {
                 if (selection.getMode() == WandMode.BOX) {
                     selection.setSecondaryPos(pos);
                     selection.rebuildFromBox();
+                    world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BELL, SoundCategory.PLAYERS, 0.8F, 1.2F);
                     notifyPos(player, "message.spatialshift.pos2_set", pos, selection.getSelectedPositions().size());
                 } else {
                     if (selection.containsPosition(pos)) {
                         selection.removePosition(pos);
+                        world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.PLAYERS, 0.8F, 0.8F);
                         notifyPos(player, "message.spatialshift.block_removed", pos, selection.getSelectedPositions().size());
                     } else {
                         selection.addPosition(pos);
+                        world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.2F);
                         notifyPos(player, "message.spatialshift.block_added", pos, selection.getSelectedPositions().size());
                     }
                 }
@@ -102,13 +108,16 @@ public class ItemSelectionWand extends Item {
                     if (selection.getMode() == WandMode.BOX) {
                         selection.setPrimaryPos(event.getPos());
                         selection.rebuildFromBox();
+                        event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.0F);
                         notifyPos(player, "message.spatialshift.pos1_set", event.getPos(), selection.getSelectedPositions().size());
                     } else {
                         if (selection.containsPosition(event.getPos())) {
                             selection.removePosition(event.getPos());
+                            event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.PLAYERS, 0.8F, 0.8F);
                             notifyPos(player, "message.spatialshift.block_removed", event.getPos(), selection.getSelectedPositions().size());
                         } else {
                             selection.addPosition(event.getPos());
+                            event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.2F);
                             notifyPos(player, "message.spatialshift.block_added", event.getPos(), selection.getSelectedPositions().size());
                         }
                     }

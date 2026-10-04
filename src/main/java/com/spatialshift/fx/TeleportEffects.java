@@ -4,6 +4,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.MobEffects;
 import net.minecraft.init.SoundEvents;
+import net.minecraft.network.play.server.SPacketSoundEffect;
 import net.minecraft.potion.PotionEffect;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.SoundCategory;
@@ -19,6 +20,10 @@ public class TeleportEffects {
     private static final Random RANDOM = new Random();
 
     public static void playEffects(WorldServer world, BlockPos corePos, AxisAlignedBB bounds, List<Entity> entities) {
+        playArrivalEffects(world, corePos, bounds, entities);
+    }
+
+    public static void playDepartureEffects(WorldServer world, BlockPos corePos, AxisAlignedBB bounds) {
         world.playSound(
             null,
             corePos.getX() + 0.5,
@@ -26,7 +31,26 @@ public class TeleportEffects {
             corePos.getZ() + 0.5,
             SoundEvents.BLOCK_END_PORTAL_SPAWN,
             SoundCategory.BLOCKS,
-            1.0F,
+            3.0F,
+            1.2F
+        );
+
+        spawnCoreParticles(world, corePos);
+
+        if (bounds != null) {
+            spawnPerimeterParticles(world, bounds);
+        }
+    }
+
+    public static void playArrivalEffects(WorldServer world, BlockPos corePos, AxisAlignedBB bounds, List<Entity> entities) {
+        world.playSound(
+            null,
+            corePos.getX() + 0.5,
+            corePos.getY() + 0.5,
+            corePos.getZ() + 0.5,
+            SoundEvents.BLOCK_END_PORTAL_SPAWN,
+            SoundCategory.BLOCKS,
+            3.0F,
             1.0F
         );
 
@@ -47,9 +71,19 @@ public class TeleportEffects {
                     player.posZ,
                     SoundEvents.BLOCK_PORTAL_TRAVEL,
                     SoundCategory.PLAYERS,
-                    1.0F,
+                    1.5F,
                     1.0F
                 );
+
+                player.connection.sendPacket(new SPacketSoundEffect(
+                    SoundEvents.BLOCK_PORTAL_TRAVEL,
+                    SoundCategory.PLAYERS,
+                    player.posX,
+                    player.posY,
+                    player.posZ,
+                    1.5F,
+                    1.0F
+                ));
 
                 if (RANDOM.nextFloat() < 0.33F) {
                     player.addPotionEffect(new PotionEffect(MobEffects.NAUSEA, 200, 0));

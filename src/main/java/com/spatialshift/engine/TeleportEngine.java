@@ -12,8 +12,10 @@ import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.init.Blocks;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
@@ -28,19 +30,21 @@ public class TeleportEngine {
     private static final int MAX_CORE_RADIUS = 50;
 
     public static void executeTeleport(WorldServer world, EntityPlayerMP player, TileEntityTeleportCore core, BlockPos requestedTarget, int targetDim, TeleportMode mode, boolean isAnchorTarget) {
+        BlockPos corePos = core.getPos();
         if (!core.hasFuel()) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.7F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
             return;
         }
 
         IPlayerSelection selection = player.getCapability(PlayerSelection.CAPABILITY, null);
         if (selection == null || selection.getSelectedPositions().isEmpty()) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.BLOCKS, 1.0F, 0.6F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.selection_empty"), true);
             return;
         }
 
         LongSet positions = selection.getSelectedPositions();
-        BlockPos corePos = core.getPos();
 
         Set<BlockPos> relativeOffsets = new HashSet<>();
         int minX = Integer.MAX_VALUE;
@@ -55,6 +59,7 @@ public class TeleportEngine {
             BlockPos pos = BlockPos.fromLong(iter.nextLong());
 
             if (Math.abs(pos.getX() - corePos.getX()) > MAX_CORE_RADIUS || Math.abs(pos.getZ() - corePos.getZ()) > MAX_CORE_RADIUS) {
+                world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.BLOCKS, 1.0F, 0.6F);
                 player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.area_outside_core_range"), true);
                 return;
             }
@@ -90,6 +95,7 @@ public class TeleportEngine {
 
         ChunkSafetyManager chunkManager = new ChunkSafetyManager(world);
         if (!chunkManager.lockChunks(initialTarget, relativeOffsets)) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.5F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.chunk_load_failed"), true);
             chunkManager.release();
             return;
@@ -97,6 +103,7 @@ public class TeleportEngine {
 
         BlockPos validTarget = CollisionDetector.findNearestValidPosition(world, initialTarget, relativeOffsets, corePos, 64);
         if (validTarget == null) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_ANVIL_PLACE, SoundCategory.BLOCKS, 0.8F, 0.6F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_free_space"), true);
             chunkManager.release();
             return;
@@ -107,6 +114,7 @@ public class TeleportEngine {
         }
 
         if (!core.consumeFuel()) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.7F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
             chunkManager.release();
             return;
@@ -117,6 +125,8 @@ public class TeleportEngine {
             snapshot.getEntities().add(player);
         }
 
+        TeleportEffects.playDepartureEffects(world, corePos, snapshot.getBounds());
+
         clearSource(world, corePos, relativeOffsets);
         pasteSnapshot(world, validTarget, snapshot);
         EntityRelocator.relocateEntities(snapshot.getEntities(), corePos, validTarget);
@@ -126,7 +136,7 @@ public class TeleportEngine {
         ItemSelectionWand.syncSelection(player, selection);
 
         AxisAlignedBB destinationBounds = computeShiftedBounds(snapshot.getBounds(), corePos, validTarget);
-        TeleportEffects.playEffects(world, validTarget, destinationBounds, snapshot.getEntities());
+        TeleportEffects.playArrivalEffects(world, validTarget, destinationBounds, snapshot.getEntities());
 
         chunkManager.release();
         player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.teleport_success"), true);

@@ -9,11 +9,13 @@ import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.inventory.InventoryHelper;
 import net.minecraft.item.ItemStack;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.EnumFacing;
 import net.minecraft.util.EnumHand;
+import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.World;
@@ -38,8 +40,10 @@ public class BlockTeleportCore extends Block implements ITileEntityProvider {
         }
 
         if (MultiblockValidator.isValidPattern(world, pos)) {
+            world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_IRON_DOOR_OPEN, SoundCategory.BLOCKS, 0.8F, 0.9F);
             player.openGui(SpatialShift.instance, GuiHandler.GUI_CORE, world, pos.getX(), pos.getY(), pos.getZ());
         } else {
+            world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 0.8F, 0.8F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.multiblock_invalid"), true);
         }
 
