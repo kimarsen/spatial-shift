@@ -463,11 +463,16 @@ public class GuiTeleportCore extends GuiContainer {
         fontRenderer.drawString(rangeStr, 168 - fontRenderer.getStringWidth(rangeStr), 4, 0x6088AACC);
 
         int heatColor = tileEntity.getCurrentHeat() > 75.0F ? 0xCC2222 : (tileEntity.getCurrentHeat() > 50.0F ? 0xBB9900 : 0x228822);
-        String heatStr = I18n.format("gui.spatialshift.heat", (int) tileEntity.getCurrentHeat());
-        fontRenderer.drawString(heatStr, 32, 118, heatColor);
+        String heatLabel = I18n.format("gui.spatialshift.heat_label");
+        String heatVal = String.format("%d%%", (int) tileEntity.getCurrentHeat());
+        fontRenderer.drawString(heatLabel, 32, 114, 0x404040);
+        fontRenderer.drawString(heatVal, 32, 124, heatColor);
 
-        String fuelStr = I18n.format("gui.spatialshift.fuel_status_short", tileEntity.getTotalFuel(), tileEntity.getMaxFuel());
-        fontRenderer.drawString(fuelStr, 110, 118, 0x404040);
+        String fuelLabel = I18n.format("gui.spatialshift.fuel_label");
+        String fuelVal = tileEntity.getTotalFuel() + " / " + tileEntity.getMaxFuel();
+        fontRenderer.drawString(fuelLabel, 108, 114, 0x404040);
+        int fuelValX = Math.min(108, 172 - fontRenderer.getStringWidth(fuelVal));
+        fontRenderer.drawString(fuelVal, fuelValX, 124, 0x404040);
     }
 
     @Override

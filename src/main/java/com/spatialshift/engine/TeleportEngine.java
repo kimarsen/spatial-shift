@@ -39,7 +39,11 @@ public class TeleportEngine {
 
         if (!core.hasFuel(fuelNeeded)) {
             world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.7F);
-            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
+            if (core.getTotalFuel() == 0) {
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
+            } else {
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.not_enough_fuel", fuelNeeded, core.getTotalFuel()), true);
+            }
             return false;
         }
 
@@ -73,7 +77,11 @@ public class TeleportEngine {
 
         if (!core.hasFuel(fuelNeeded)) {
             world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.7F);
-            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
+            if (core.getTotalFuel() == 0) {
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
+            } else {
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.not_enough_fuel", fuelNeeded, core.getTotalFuel()), true);
+            }
             return;
         }
 
@@ -175,12 +183,21 @@ public class TeleportEngine {
         }
 
         if (!validTarget.equals(initialTarget)) {
-            chunkManager.lockChunks(validTarget, relativeOffsets);
+            if (!chunkManager.lockChunks(validTarget, relativeOffsets)) {
+                world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.5F);
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.chunk_load_failed"), true);
+                chunkManager.release();
+                return;
+            }
         }
 
         if (!core.consumeFuel(fuelNeeded)) {
             world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.7F);
-            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
+            if (core.getTotalFuel() == 0) {
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
+            } else {
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.not_enough_fuel", fuelNeeded, core.getTotalFuel()), true);
+            }
             chunkManager.release();
             return;
         }

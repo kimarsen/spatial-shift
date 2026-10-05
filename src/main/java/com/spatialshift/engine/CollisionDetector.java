@@ -36,14 +36,25 @@ public class CollisionDetector {
             return initialTarget;
         }
 
-        for (int r = 1; r <= maxRadius; r++) {
+        int minRelY = 0;
+        int maxRelY = 0;
+        for (BlockPos offset : relativeOffsets) {
+            if (offset.getY() < minRelY) {
+                minRelY = offset.getY();
+            }
+            if (offset.getY() > maxRelY) {
+                maxRelY = offset.getY();
+            }
+        }
+
+        for (int r = 1; r <= 8; r++) {
             for (int dx = -r; dx <= r; dx++) {
                 for (int dz = -r; dz <= r; dz++) {
                     if (Math.abs(dx) != r && Math.abs(dz) != r) {
                         continue;
                     }
 
-                    for (int dy = 0; dy <= 4; dy++) {
+                    for (int dy = 0; dy <= r; dy++) {
                         BlockPos candidate = initialTarget.add(dx, dy, dz);
                         if (isAreaFree(world, candidate, relativeOffsets, sourceOrigin)) {
                             return candidate;
@@ -53,6 +64,55 @@ public class CollisionDetector {
                             if (isAreaFree(world, candidate, relativeOffsets, sourceOrigin)) {
                                 return candidate;
                             }
+                        }
+                    }
+                }
+            }
+        }
+
+        int topTerrainY = world.getTopSolidOrLiquidBlock(initialTarget).getY();
+        int safeSurfaceY = topTerrainY + 1 - minRelY;
+        int startY = Math.max(initialTarget.getY() + 1, safeSurfaceY);
+        int maxY = 255 - maxRelY;
+
+        for (int y = startY; y <= maxY; y++) {
+            BlockPos candidate = new BlockPos(initialTarget.getX(), y, initialTarget.getZ());
+            if (isAreaFree(world, candidate, relativeOffsets, sourceOrigin)) {
+                return candidate;
+            }
+        }
+
+        for (int dy = 1; dy <= 64; dy++) {
+            int y = initialTarget.getY() + dy;
+            if (y <= maxY) {
+                BlockPos candidate = new BlockPos(initialTarget.getX(), y, initialTarget.getZ());
+                if (isAreaFree(world, candidate, relativeOffsets, sourceOrigin)) {
+                    return candidate;
+                }
+            }
+            int downY = initialTarget.getY() - dy;
+            if (downY + minRelY >= 1) {
+                BlockPos candidate = new BlockPos(initialTarget.getX(), downY, initialTarget.getZ());
+                if (isAreaFree(world, candidate, relativeOffsets, sourceOrigin)) {
+                    return candidate;
+                }
+            }
+        }
+
+        for (int r = 1; r <= maxRadius; r++) {
+            for (int dx = -r; dx <= r; dx++) {
+                for (int dz = -r; dz <= r; dz++) {
+                    if (Math.abs(dx) != r && Math.abs(dz) != r) {
+                        continue;
+                    }
+
+                    BlockPos columnProbe = new BlockPos(initialTarget.getX() + dx, 0, initialTarget.getZ() + dz);
+                    int colTop = world.getTopSolidOrLiquidBlock(columnProbe).getY();
+                    int colSurfaceY = colTop + 1 - minRelY;
+                    if (colSurfaceY <= maxY) {
+                        BlockPos surfaceCandidate = new BlockPos(columnProbe.getX(), colSurfaceY, columnProbe.getZ());
+                        if (isAreaFree(world, surfaceCandidate, relativeOffsets, sourceOrigin)) {
+                            return surfaceCandidate;
                         }
                     }
                 }
