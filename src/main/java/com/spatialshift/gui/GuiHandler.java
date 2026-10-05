@@ -1,10 +1,12 @@
 package com.spatialshift.gui;
 
+import com.spatialshift.container.ContainerAnchor;
 import com.spatialshift.container.ContainerTeleportCore;
 import com.spatialshift.data.AnchorData;
 import com.spatialshift.data.AnchorSavedData;
 import com.spatialshift.network.PacketHandler;
 import com.spatialshift.network.packet.PacketSyncAnchors;
+import com.spatialshift.tileentity.TileEntityAnchor;
 import com.spatialshift.tileentity.TileEntityTeleportCore;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
@@ -19,6 +21,7 @@ import java.util.List;
 public class GuiHandler implements IGuiHandler {
 
     public static final int GUI_CORE = 1;
+    public static final int GUI_ANCHOR = 2;
 
     @Nullable
     @Override
@@ -32,6 +35,11 @@ public class GuiHandler implements IGuiHandler {
                 }
                 return new ContainerTeleportCore(player.inventory, (TileEntityTeleportCore) te);
             }
+        } else if (ID == GUI_ANCHOR) {
+            TileEntity te = world.getTileEntity(new BlockPos(x, y, z));
+            if (te instanceof TileEntityAnchor) {
+                return new ContainerAnchor((TileEntityAnchor) te);
+            }
         }
         return null;
     }
@@ -43,6 +51,11 @@ public class GuiHandler implements IGuiHandler {
             TileEntity te = world.getTileEntity(new BlockPos(x, y, z));
             if (te instanceof TileEntityTeleportCore) {
                 return new GuiTeleportCore(player.inventory, (TileEntityTeleportCore) te);
+            }
+        } else if (ID == GUI_ANCHOR) {
+            TileEntity te = world.getTileEntity(new BlockPos(x, y, z));
+            if (te instanceof TileEntityAnchor) {
+                return new GuiAnchor((TileEntityAnchor) te);
             }
         }
         return null;

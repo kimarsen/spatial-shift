@@ -55,14 +55,8 @@ public class BlockAnchor extends Block implements ITileEntityProvider {
         if (te instanceof TileEntityAnchor) {
             TileEntityAnchor anchor = (TileEntityAnchor) te;
             if (anchor.getOwnerUuid().equals(player.getUniqueID())) {
-                anchor.toggleAccess();
-                world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_IRON_TRAPDOOR_OPEN, SoundCategory.BLOCKS, 0.8F, anchor.getAccess() == AnchorAccess.PUBLIC ? 1.2F : 0.8F);
-                TextFormatting color = anchor.getAccess() == AnchorAccess.PUBLIC ? TextFormatting.GREEN : TextFormatting.RED;
-                TextComponentTranslation accessName = new TextComponentTranslation("access.spatialshift." + anchor.getAccess().name().toLowerCase());
-                player.sendStatusMessage(new TextComponentTranslation(
-                    "message.spatialshift.anchor_access_changed",
-                    color + accessName.getFormattedText()
-                ), true);
+                world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_IRON_DOOR_OPEN, SoundCategory.BLOCKS, 0.8F, 1.1F);
+                player.openGui(SpatialShift.instance, com.spatialshift.gui.GuiHandler.GUI_ANCHOR, world, pos.getX(), pos.getY(), pos.getZ());
             } else {
                 world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.BLOCKS, 0.8F, 0.5F);
                 player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.anchor_not_owner"), true);

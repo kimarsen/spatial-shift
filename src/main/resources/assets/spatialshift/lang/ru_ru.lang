@@ -76,3 +76,5 @@ gui.spatialshift.tooltip.core=Ядро: [%d, %d, %d]
 gui.spatialshift.tooltip.target=Цель: [%d, %d, %d] (%dм)
 gui.spatialshift.tooltip.anchor_click=ЛКМ: Выбрать этот якорь
 gui.spatialshift.tooltip.map_click=ЛКМ: Установить координаты цели
+gui.spatialshift.anchor_title=Пространственный якорь
+gui.spatialshift.anchor_pos=Координаты: [%d, %d, %d]

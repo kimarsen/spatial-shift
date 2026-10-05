@@ -76,3 +76,5 @@ gui.spatialshift.tooltip.core=Core: [%d, %d, %d]
 gui.spatialshift.tooltip.target=Target: [%d, %d, %d] (%dm)
 gui.spatialshift.tooltip.anchor_click=LMB: Select this anchor
 gui.spatialshift.tooltip.map_click=LMB: Set target coordinates
+gui.spatialshift.anchor_title=Spatial Anchor
+gui.spatialshift.anchor_pos=Position: [%d, %d, %d]
