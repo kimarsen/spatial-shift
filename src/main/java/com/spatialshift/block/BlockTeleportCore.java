@@ -39,12 +39,23 @@ public class BlockTeleportCore extends Block implements ITileEntityProvider {
             return true;
         }
 
-        if (MultiblockValidator.isValidPattern(world, pos)) {
-            world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_IRON_DOOR_OPEN, SoundCategory.BLOCKS, 0.8F, 0.9F);
-            player.openGui(SpatialShift.instance, GuiHandler.GUI_CORE, world, pos.getX(), pos.getY(), pos.getZ());
-        } else {
-            world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 0.8F, 0.8F);
-            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.multiblock_invalid"), true);
+        TileEntity te = world.getTileEntity(pos);
+        if (te instanceof TileEntityTeleportCore) {
+            TileEntityTeleportCore core = (TileEntityTeleportCore) te;
+            if (core.applyCoolant(player.getHeldItem(hand), player)) {
+                return true;
+            }
+
+            if (MultiblockValidator.isValidPattern(world, pos)) {
+                if (player instanceof net.minecraft.entity.player.EntityPlayerMP) {
+                    core.syncToPlayer((net.minecraft.entity.player.EntityPlayerMP) player);
+                }
+                world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_IRON_DOOR_OPEN, SoundCategory.BLOCKS, 0.8F, 0.9F);
+                player.openGui(SpatialShift.instance, GuiHandler.GUI_CORE, world, pos.getX(), pos.getY(), pos.getZ());
+            } else {
+                world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 0.8F, 0.8F);
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.multiblock_invalid"), true);
+            }
         }
 
         return true;

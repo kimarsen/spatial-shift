@@ -77,18 +77,27 @@ public class ItemSelectionWand extends Item {
             if (selection != null) {
                 if (selection.getMode() == WandMode.BOX) {
                     selection.setSecondaryPos(pos);
-                    selection.rebuildFromBox();
-                    world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BELL, SoundCategory.PLAYERS, 0.8F, 1.2F);
-                    notifyPos(player, "message.spatialshift.pos2_set", pos, selection.getSelectedPositions().size());
+                    if (selection.rebuildFromBox()) {
+                        world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BELL, SoundCategory.PLAYERS, 0.8F, 1.2F);
+                        notifyPos(player, "message.spatialshift.pos2_set", pos, selection.getSelectedPositions().size());
+                    } else {
+                        selection.setSecondaryPos(null);
+                        world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.PLAYERS, 0.8F, 0.5F);
+                        player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.selection_too_large", IPlayerSelection.MAX_SELECTION_SPAN, IPlayerSelection.MAX_SELECTION_VOLUME), true);
+                    }
                 } else {
                     if (selection.containsPosition(pos)) {
                         selection.removePosition(pos);
                         world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.PLAYERS, 0.8F, 0.8F);
                         notifyPos(player, "message.spatialshift.block_removed", pos, selection.getSelectedPositions().size());
                     } else {
-                        selection.addPosition(pos);
-                        world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.2F);
-                        notifyPos(player, "message.spatialshift.block_added", pos, selection.getSelectedPositions().size());
+                        if (selection.addPosition(pos)) {
+                            world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.2F);
+                            notifyPos(player, "message.spatialshift.block_added", pos, selection.getSelectedPositions().size());
+                        } else {
+                            world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.PLAYERS, 0.8F, 0.5F);
+                            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.selection_too_large", IPlayerSelection.MAX_SELECTION_SPAN, IPlayerSelection.MAX_SELECTION_VOLUME), true);
+                        }
                     }
                 }
                 syncSelection(player, selection);
@@ -107,18 +116,27 @@ public class ItemSelectionWand extends Item {
                 if (selection != null) {
                     if (selection.getMode() == WandMode.BOX) {
                         selection.setPrimaryPos(event.getPos());
-                        selection.rebuildFromBox();
-                        event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.0F);
-                        notifyPos(player, "message.spatialshift.pos1_set", event.getPos(), selection.getSelectedPositions().size());
+                        if (selection.rebuildFromBox()) {
+                            event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.0F);
+                            notifyPos(player, "message.spatialshift.pos1_set", event.getPos(), selection.getSelectedPositions().size());
+                        } else {
+                            selection.setPrimaryPos(null);
+                            event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.PLAYERS, 0.8F, 0.5F);
+                            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.selection_too_large", IPlayerSelection.MAX_SELECTION_SPAN, IPlayerSelection.MAX_SELECTION_VOLUME), true);
+                        }
                     } else {
                         if (selection.containsPosition(event.getPos())) {
                             selection.removePosition(event.getPos());
                             event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.PLAYERS, 0.8F, 0.8F);
                             notifyPos(player, "message.spatialshift.block_removed", event.getPos(), selection.getSelectedPositions().size());
                         } else {
-                            selection.addPosition(event.getPos());
-                            event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.2F);
-                            notifyPos(player, "message.spatialshift.block_added", event.getPos(), selection.getSelectedPositions().size());
+                            if (selection.addPosition(event.getPos())) {
+                                event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_CHIME, SoundCategory.PLAYERS, 0.8F, 1.2F);
+                                notifyPos(player, "message.spatialshift.block_added", event.getPos(), selection.getSelectedPositions().size());
+                            } else {
+                                event.getWorld().playSound(null, event.getPos().getX() + 0.5, event.getPos().getY() + 0.5, event.getPos().getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.PLAYERS, 0.8F, 0.5F);
+                                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.selection_too_large", IPlayerSelection.MAX_SELECTION_SPAN, IPlayerSelection.MAX_SELECTION_VOLUME), true);
+                            }
                         }
                     }
                     syncSelection(player, selection);

@@ -33,7 +33,7 @@ public class SpatialShift {
 
     public static final String MODID = "spatialshift";
     public static final String NAME = "Spatial Shift";
-    public static final String VERSION = "1.3.0";
+    public static final String VERSION = "1.4.0";
 
     @Mod.Instance(MODID)
     public static SpatialShift instance;
@@ -63,8 +63,23 @@ public class SpatialShift {
             TileEntityAnchor.class,
             new ResourceLocation(MODID, "spatial_anchor")
         );
+        GameRegistry.registerTileEntity(
+            com.spatialshift.tileentity.TileEntityHyperdriveCore.class,
+            new ResourceLocation(MODID, "hyperdrive_core")
+        );
+        GameRegistry.registerTileEntity(
+            com.spatialshift.tileentity.TileEntityFuelCompartment.class,
+            new ResourceLocation(MODID, "fuel_compartment")
+        );
 
-        ForgeChunkManager.setForcedChunkLoadingCallback(instance, (tickets, world) -> {});
+        ForgeChunkManager.setForcedChunkLoadingCallback(instance, (tickets, world) -> {
+            for (ForgeChunkManager.Ticket ticket : tickets) {
+                if (ticket.getModData().hasKey("AnchorPos")) {
+                    net.minecraft.util.math.BlockPos p = net.minecraft.util.math.BlockPos.fromLong(ticket.getModData().getLong("AnchorPos"));
+                    ForgeChunkManager.forceChunk(ticket, new net.minecraft.util.math.ChunkPos(p));
+                }
+            }
+        });
 
         MinecraftForge.EVENT_BUS.register(new ModBlocks());
         MinecraftForge.EVENT_BUS.register(new ModItems());

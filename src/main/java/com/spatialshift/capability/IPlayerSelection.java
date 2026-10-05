@@ -6,6 +6,9 @@ import net.minecraft.util.math.BlockPos;
 
 public interface IPlayerSelection {
 
+    int MAX_SELECTION_SPAN = 100;
+    int MAX_SELECTION_VOLUME = 32768;
+
     WandMode getMode();
 
     void setMode(WandMode mode);
@@ -20,7 +23,7 @@ public interface IPlayerSelection {
 
     LongSet getSelectedPositions();
 
-    void addPosition(BlockPos pos);
+    boolean addPosition(BlockPos pos);
 
     void removePosition(BlockPos pos);
 
@@ -28,9 +31,9 @@ public interface IPlayerSelection {
 
     void clear();
 
-    void rebuildFromBox();
+    boolean rebuildFromBox();
 
     void setFromPackedArray(long[] packed);
- 
+
     void shift(BlockPos offset);
 }

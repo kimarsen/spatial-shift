@@ -60,11 +60,14 @@ public class TileEntityAnchor extends TileEntity {
         }
     }
 
+    private net.minecraftforge.common.ForgeChunkManager.Ticket chunkTicket;
+
     @Override
     public void onLoad() {
         super.onLoad();
         if (world != null && !world.isRemote) {
             updateSavedData();
+            requestChunkTicket();
         }
     }
 
@@ -73,6 +76,35 @@ public class TileEntityAnchor extends TileEntity {
         super.validate();
         if (world != null && !world.isRemote) {
             updateSavedData();
+            requestChunkTicket();
+        }
+    }
+
+    @Override
+    public void invalidate() {
+        releaseChunkTicket();
+        super.invalidate();
+    }
+
+    private void requestChunkTicket() {
+        if (chunkTicket == null && world instanceof net.minecraft.world.WorldServer) {
+            chunkTicket = net.minecraftforge.common.ForgeChunkManager.requestTicket(
+                com.spatialshift.SpatialShift.instance,
+                world,
+                net.minecraftforge.common.ForgeChunkManager.Type.NORMAL
+            );
+            if (chunkTicket != null) {
+                chunkTicket.getModData().setLong("AnchorPos", pos.toLong());
+                net.minecraftforge.common.ForgeChunkManager.forceChunk(chunkTicket, new net.minecraft.util.math.ChunkPos(pos));
+            }
+        }
+    }
+
+    private void releaseChunkTicket() {
+        if (chunkTicket != null) {
+            net.minecraftforge.common.ForgeChunkManager.unforceChunk(chunkTicket, new net.minecraft.util.math.ChunkPos(pos));
+            net.minecraftforge.common.ForgeChunkManager.releaseTicket(chunkTicket);
+            chunkTicket = null;
         }
     }
 

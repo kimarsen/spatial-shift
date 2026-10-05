@@ -63,8 +63,12 @@ public class PlayerSelection implements IPlayerSelection {
     }
 
     @Override
-    public void addPosition(BlockPos pos) {
+    public boolean addPosition(BlockPos pos) {
+        if (selectedPositions.size() >= MAX_SELECTION_VOLUME) {
+            return false;
+        }
         selectedPositions.add(pos.toLong());
+        return true;
     }
 
     @Override
@@ -85,10 +89,10 @@ public class PlayerSelection implements IPlayerSelection {
     }
 
     @Override
-    public void rebuildFromBox() {
+    public boolean rebuildFromBox() {
         selectedPositions.clear();
         if (primaryPos == null || secondaryPos == null) {
-            return;
+            return true;
         }
 
         int minX = Math.min(primaryPos.getX(), secondaryPos.getX());
@@ -98,6 +102,19 @@ public class PlayerSelection implements IPlayerSelection {
         int minZ = Math.min(primaryPos.getZ(), secondaryPos.getZ());
         int maxZ = Math.max(primaryPos.getZ(), secondaryPos.getZ());
 
+        int spanX = maxX - minX + 1;
+        int spanY = maxY - minY + 1;
+        int spanZ = maxZ - minZ + 1;
+
+        if (spanX > MAX_SELECTION_SPAN || spanZ > MAX_SELECTION_SPAN) {
+            return false;
+        }
+
+        long volume = (long) spanX * spanY * spanZ;
+        if (volume > MAX_SELECTION_VOLUME) {
+            return false;
+        }
+
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
@@ -105,6 +122,7 @@ public class PlayerSelection implements IPlayerSelection {
                 }
             }
         }
+        return true;
     }
 
     @Override

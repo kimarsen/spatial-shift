@@ -19,6 +19,8 @@ public class PacketHandler {
         INSTANCE.registerMessage(PacketSyncSelection.Handler.class, PacketSyncSelection.class, packetId++, Side.CLIENT);
         INSTANCE.registerMessage(PacketSyncAnchors.Handler.class, PacketSyncAnchors.class, packetId++, Side.CLIENT);
         INSTANCE.registerMessage(PacketTeleportRequest.Handler.class, PacketTeleportRequest.class, packetId++, Side.SERVER);
+        INSTANCE.registerMessage(com.spatialshift.network.packet.PacketSyncCoreState.Handler.class, com.spatialshift.network.packet.PacketSyncCoreState.class, packetId++, Side.CLIENT);
+        INSTANCE.registerMessage(com.spatialshift.network.packet.PacketToggleSafetyLock.Handler.class, com.spatialshift.network.packet.PacketToggleSafetyLock.class, packetId++, Side.SERVER);
     }
 
     public static void sendTo(IMessage message, EntityPlayerMP player) {

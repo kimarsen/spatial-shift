@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "normal": { "model": "spatialshift:hyperdrive_core" }
+  }
+}

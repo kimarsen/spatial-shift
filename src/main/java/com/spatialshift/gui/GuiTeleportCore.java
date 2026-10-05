@@ -7,6 +7,7 @@ import com.spatialshift.data.AnchorData;
 import com.spatialshift.data.TeleportMode;
 import com.spatialshift.network.PacketHandler;
 import com.spatialshift.network.packet.PacketTeleportRequest;
+import com.spatialshift.network.packet.PacketToggleSafetyLock;
 import com.spatialshift.tileentity.TileEntityTeleportCore;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiTextField;
@@ -16,9 +17,11 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.text.TextFormatting;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class GuiTeleportCore extends GuiContainer {
@@ -41,6 +44,7 @@ public class GuiTeleportCore extends GuiContainer {
     private GuiButton buttonPrevAnchor;
     private GuiButton buttonNextAnchor;
     private GuiButton buttonTeleport;
+    private GuiButton buttonSafetyLock;
 
     public GuiTeleportCore(InventoryPlayer playerInv, TileEntityTeleportCore tileEntity) {
         super(new ContainerTeleportCore(playerInv, tileEntity));
@@ -75,7 +79,8 @@ public class GuiTeleportCore extends GuiContainer {
         buttonMode = addButton(new GuiButton(11, startX + 10, startY + 36, 60, 16, getModeText()));
         buttonPrevAnchor = addButton(new GuiButton(12, startX + 75, startY + 36, 16, 16, "<"));
         buttonNextAnchor = addButton(new GuiButton(13, startX + 152, startY + 36, 16, 16, ">"));
-        buttonTeleport = addButton(new GuiButton(14, startX + 105, startY + 54, 63, 20, I18n.format("gui.spatialshift.button_teleport")));
+        buttonSafetyLock = addButton(new GuiButton(15, startX + 10, startY + 54, 62, 18, getSafetyLockText()));
+        buttonTeleport = addButton(new GuiButton(14, startX + 104, startY + 54, 64, 18, I18n.format("gui.spatialshift.button_teleport")));
 
         updateButtonStates();
     }
@@ -101,12 +106,21 @@ public class GuiTeleportCore extends GuiContainer {
         return teleportMode == TeleportMode.LANDING ? I18n.format("gui.spatialshift.mode_landing") : I18n.format("gui.spatialshift.mode_air");
     }
 
+    private String getSafetyLockText() {
+        return tileEntity.isSafetyLockEnabled()
+            ? TextFormatting.GREEN + I18n.format("gui.spatialshift.safety_on")
+            : TextFormatting.RED + I18n.format("gui.spatialshift.safety_off");
+    }
+
     private void updateButtonStates() {
         if (buttonTargetType != null) {
             buttonTargetType.displayString = getTargetTypeText();
         }
         if (buttonMode != null) {
             buttonMode.displayString = getModeText();
+        }
+        if (buttonSafetyLock != null) {
+            buttonSafetyLock.displayString = getSafetyLockText();
         }
         boolean hasAnchors = !availableAnchors.isEmpty() && useAnchorTarget;
         if (buttonPrevAnchor != null) {
@@ -138,6 +152,10 @@ public class GuiTeleportCore extends GuiContainer {
             }
         } else if (button.id == 14) {
             executeTeleport();
+        } else if (button.id == 15) {
+            tileEntity.toggleSafetyLock();
+            PacketHandler.sendToServer(new PacketToggleSafetyLock(tileEntity.getPos()));
+            updateButtonStates();
         }
     }
 
@@ -220,7 +238,13 @@ public class GuiTeleportCore extends GuiContainer {
     @Override
     protected void drawGuiContainerForegroundLayer(int mouseX, int mouseY) {
         fontRenderer.drawString(I18n.format("gui.spatialshift.title"), 8, 6, 0x404040);
-        fontRenderer.drawString(I18n.format("gui.spatialshift.fuel"), 54, 57, 0x404040);
+
+        int heatColor = tileEntity.getCurrentHeat() > 75.0F ? 0xCC2222 : (tileEntity.getCurrentHeat() > 50.0F ? 0xBB9900 : 0x228822);
+        String heatStr = I18n.format("gui.spatialshift.heat", (int) tileEntity.getCurrentHeat());
+        fontRenderer.drawString(heatStr, 10, 74, heatColor);
+
+        String fuelStr = I18n.format("gui.spatialshift.fuel_status_short", tileEntity.getTotalFuel(), tileEntity.getMaxFuel());
+        fontRenderer.drawString(fuelStr, 78, 74, 0x404040);
     }
 
     @Override
@@ -228,5 +252,18 @@ public class GuiTeleportCore extends GuiContainer {
         drawDefaultBackground();
         super.drawScreen(mouseX, mouseY, partialTicks);
         renderHoveredToolTip(mouseX, mouseY);
+
+        if (buttonMode != null && buttonMode.isMouseOver()) {
+            if (teleportMode == TeleportMode.LANDING) {
+                drawHoveringText(I18n.format("gui.spatialshift.tooltip.mode_landing"), mouseX, mouseY);
+            } else {
+                drawHoveringText(I18n.format("gui.spatialshift.tooltip.mode_air"), mouseX, mouseY);
+            }
+        } else if (buttonSafetyLock != null && buttonSafetyLock.isMouseOver()) {
+            drawHoveringText(Arrays.asList(
+                I18n.format("gui.spatialshift.tooltip.safety1"),
+                I18n.format("gui.spatialshift.tooltip.safety2")
+            ), mouseX, mouseY);
+        }
     }
 }

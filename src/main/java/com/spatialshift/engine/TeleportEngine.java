@@ -5,6 +5,7 @@ import com.spatialshift.capability.PlayerSelection;
 import com.spatialshift.data.TeleportMode;
 import com.spatialshift.fx.TeleportEffects;
 import com.spatialshift.item.ItemSelectionWand;
+import com.spatialshift.multiblock.ShipNetworkScanner;
 import com.spatialshift.tileentity.TileEntityTeleportCore;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongSet;
@@ -19,6 +20,7 @@ import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 
 import java.util.HashSet;
@@ -29,9 +31,47 @@ public class TeleportEngine {
 
     private static final int MAX_CORE_RADIUS = 50;
 
+    public static boolean validatePreflight(WorldServer world, EntityPlayerMP player, TileEntityTeleportCore core, BlockPos requestedTarget, boolean isAnchorTarget) {
+        BlockPos corePos = core.getPos();
+        double dist = Math.sqrt(corePos.distanceSq(requestedTarget));
+        int distanceBlocks = (int) Math.ceil(dist);
+        int fuelNeeded = Math.max(1000, ((distanceBlocks + 999) / 1000) * 1000);
+
+        if (!core.hasFuel(fuelNeeded)) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.7F);
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
+            return false;
+        }
+
+        IPlayerSelection selection = player.getCapability(PlayerSelection.CAPABILITY, null);
+        if (selection == null || selection.getSelectedPositions().isEmpty()) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_NOTE_BASS, SoundCategory.BLOCKS, 1.0F, 0.6F);
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.selection_empty"), true);
+            return false;
+        }
+
+        if (distanceBlocks > 1000 && !core.isHyperdriveActive() && core.isSafetyLockEnabled()) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.8F);
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.safety_lock_distance"), true);
+            return false;
+        }
+
+        if (core.getCurrentHeat() > TileEntityTeleportCore.SAFE_HEAT_THRESHOLD && core.isSafetyLockEnabled()) {
+            world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.8F);
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.core_overheated"), true);
+            return false;
+        }
+
+        return true;
+    }
+
     public static void executeTeleport(WorldServer world, EntityPlayerMP player, TileEntityTeleportCore core, BlockPos requestedTarget, int targetDim, TeleportMode mode, boolean isAnchorTarget) {
         BlockPos corePos = core.getPos();
-        if (!core.hasFuel()) {
+        double dist = Math.sqrt(corePos.distanceSq(requestedTarget));
+        int distanceBlocks = (int) Math.ceil(dist);
+        int fuelNeeded = Math.max(1000, ((distanceBlocks + 999) / 1000) * 1000);
+
+        if (!core.hasFuel(fuelNeeded)) {
             world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.7F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
             return;
@@ -44,8 +84,29 @@ public class TeleportEngine {
             return;
         }
 
-        LongSet positions = selection.getSelectedPositions();
+        float crashChance = 0.0F;
+        if (distanceBlocks > 1000 && !core.isHyperdriveActive()) {
+            if (core.isSafetyLockEnabled()) {
+                world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.8F);
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.safety_lock_distance"), true);
+                return;
+            } else {
+                int excess = distanceBlocks - 1000;
+                crashChance = Math.min(0.85F, ((excess + 99) / 100) * 0.15F);
+            }
+        }
 
+        if (core.getCurrentHeat() > TileEntityTeleportCore.SAFE_HEAT_THRESHOLD) {
+            if (core.isSafetyLockEnabled()) {
+                world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.8F);
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.core_overheated"), true);
+                return;
+            } else {
+                crashChance = Math.max(crashChance, 0.85F);
+            }
+        }
+
+        LongSet positions = selection.getSelectedPositions();
         Set<BlockPos> relativeOffsets = new HashSet<>();
         int minX = Integer.MAX_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -65,7 +126,6 @@ public class TeleportEngine {
             }
 
             relativeOffsets.add(pos.subtract(corePos));
-
             minX = Math.min(minX, pos.getX());
             minY = Math.min(minY, pos.getY());
             minZ = Math.min(minZ, pos.getZ());
@@ -74,19 +134,16 @@ public class TeleportEngine {
             maxZ = Math.max(maxZ, pos.getZ());
         }
 
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                BlockPos framePos = corePos.add(dx, 0, dz);
-                relativeOffsets.add(new BlockPos(dx, 0, dz));
-                selection.addPosition(framePos);
-
-                minX = Math.min(minX, framePos.getX());
-                minY = Math.min(minY, framePos.getY());
-                minZ = Math.min(minZ, framePos.getZ());
-                maxX = Math.max(maxX, framePos.getX());
-                maxY = Math.max(maxY, framePos.getY());
-                maxZ = Math.max(maxZ, framePos.getZ());
-            }
+        Set<BlockPos> machinery = ShipNetworkScanner.collectShipMachinery(world, corePos);
+        for (BlockPos machPos : machinery) {
+            relativeOffsets.add(machPos.subtract(corePos));
+            selection.addPosition(machPos);
+            minX = Math.min(minX, machPos.getX());
+            minY = Math.min(minY, machPos.getY());
+            minZ = Math.min(minZ, machPos.getZ());
+            maxX = Math.max(maxX, machPos.getX());
+            maxY = Math.max(maxY, machPos.getY());
+            maxZ = Math.max(maxZ, machPos.getZ());
         }
 
         int minRelativeY = minY - corePos.getY();
@@ -113,7 +170,7 @@ public class TeleportEngine {
             chunkManager.lockChunks(validTarget, relativeOffsets);
         }
 
-        if (!core.consumeFuel()) {
+        if (!core.consumeFuel(fuelNeeded)) {
             world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.7F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_fuel"), true);
             chunkManager.release();
@@ -123,6 +180,12 @@ public class TeleportEngine {
         VoxelSnapshot snapshot = createSnapshot(world, corePos, relativeOffsets, minX, minY, minZ, maxX, maxY, maxZ);
         if (!snapshot.getEntities().contains(player)) {
             snapshot.getEntities().add(player);
+        }
+
+        if (crashChance > 0.0F && world.rand.nextFloat() < crashChance) {
+            handleCrash(world, player, corePos, validTarget, minRelativeY, snapshot, relativeOffsets);
+            chunkManager.release();
+            return;
         }
 
         TeleportEffects.playDepartureEffects(world, corePos, snapshot.getBounds());
@@ -138,8 +201,94 @@ public class TeleportEngine {
         AxisAlignedBB destinationBounds = computeShiftedBounds(snapshot.getBounds(), corePos, validTarget);
         TeleportEffects.playArrivalEffects(world, validTarget, destinationBounds, snapshot.getEntities());
 
+        TileEntity newTe = world.getTileEntity(validTarget);
+        if (newTe instanceof TileEntityTeleportCore) {
+            TileEntityTeleportCore newCore = (TileEntityTeleportCore) newTe;
+            if (newCore.isHyperdriveActive()) {
+                float heatToAdd = 15.0F + (float) (distanceBlocks / 2000.0) * 10.0F;
+                newCore.addHeat(heatToAdd);
+            } else {
+                newCore.addHeat(100.0F);
+            }
+            newCore.syncToPlayer(player);
+        }
+
         chunkManager.release();
         player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.teleport_success"), true);
+    }
+
+    private static void handleCrash(WorldServer world, EntityPlayerMP player, BlockPos corePos, BlockPos targetPos, int minRelativeY, VoxelSnapshot snapshot, Set<BlockPos> relativeOffsets) {
+        float roll = world.rand.nextFloat();
+
+        if (roll < 0.33F) {
+            int drop = calculateMaxDrop(world, corePos, relativeOffsets);
+            BlockPos dropOrigin = corePos.down(drop);
+            clearSource(world, corePos, relativeOffsets);
+            pasteSnapshot(world, dropOrigin, snapshot);
+            EntityRelocator.relocateEntities(snapshot.getEntities(), corePos, dropOrigin);
+
+            world.createExplosion(null, dropOrigin.getX() + 0.5, dropOrigin.getY() + 0.5, dropOrigin.getZ() + 0.5, 6.0F, true);
+            float underPower = drop <= 20 ? 3.0F : 6.0F;
+            BlockPos underPos = dropOrigin.down(Math.abs(minRelativeY) + 1);
+            world.createExplosion(null, underPos.getX() + 0.5, Math.max(1, underPos.getY()), underPos.getZ() + 0.5, underPower, true);
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.crash_departure"), true);
+        } else if (roll < 0.67F) {
+            int drop = calculateMaxDrop(world, targetPos, relativeOffsets);
+            BlockPos dropTarget = targetPos.down(drop);
+            clearSource(world, corePos, relativeOffsets);
+            pasteSnapshot(world, dropTarget, snapshot);
+            EntityRelocator.relocateEntities(snapshot.getEntities(), corePos, dropTarget);
+
+            world.createExplosion(null, dropTarget.getX() + 0.5, dropTarget.getY() + 0.5, dropTarget.getZ() + 0.5, 6.0F, true);
+            float underPower = drop <= 20 ? 3.0F : 6.0F;
+            BlockPos underPos = dropTarget.down(Math.abs(minRelativeY) + 1);
+            world.createExplosion(null, underPos.getX() + 0.5, Math.max(1, underPos.getY()), underPos.getZ() + 0.5, underPower, true);
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.crash_destination"), true);
+        } else {
+            int actualX = (int) Math.round(corePos.getX() + (targetPos.getX() - corePos.getX()) * 0.6);
+            int actualY = (int) Math.round(corePos.getY() + (targetPos.getY() - corePos.getY()) * 0.6);
+            int actualZ = (int) Math.round(corePos.getZ() + (targetPos.getZ() - corePos.getZ()) * 0.6);
+            BlockPos partialTarget = new BlockPos(actualX, actualY, actualZ);
+            BlockPos safePartial = CollisionDetector.findNearestValidPosition(world, partialTarget, relativeOffsets, corePos, 64);
+            if (safePartial == null) {
+                safePartial = partialTarget;
+            }
+
+            clearSource(world, corePos, relativeOffsets);
+            pasteSnapshot(world, safePartial, snapshot);
+            EntityRelocator.relocateEntities(snapshot.getEntities(), corePos, safePartial);
+
+            world.createExplosion(null, safePartial.getX() + 0.5, safePartial.getY() + 0.5, safePartial.getZ() + 0.5, 6.0F, true);
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.crash_partial"), true);
+        }
+    }
+
+    private static int calculateMaxDrop(World world, BlockPos origin, Set<BlockPos> relativeOffsets) {
+        int maxDrop = 0;
+        for (int d = 1; d <= 256; d++) {
+            boolean blocked = false;
+            for (BlockPos offset : relativeOffsets) {
+                BlockPos p = origin.add(offset).down(d);
+                if (p.getY() < 1) {
+                    blocked = true;
+                    break;
+                }
+                BlockPos relToOrigin = p.subtract(origin);
+                if (relativeOffsets.contains(relToOrigin)) {
+                    continue;
+                }
+                IBlockState state = world.getBlockState(p);
+                if (!state.getBlock().isAir(state, world, p) && !state.getBlock().isReplaceable(world, p)) {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (blocked) {
+                break;
+            }
+            maxDrop = d;
+        }
+        return maxDrop;
     }
 
     private static BlockPos computeTargetOrigin(WorldServer world, BlockPos target, TeleportMode mode, boolean isAnchorTarget, int maxRelativeY, int minRelativeY) {

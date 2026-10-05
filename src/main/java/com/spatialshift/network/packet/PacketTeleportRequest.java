@@ -72,15 +72,15 @@ public class PacketTeleportRequest implements IMessage {
 
                 TileEntityTeleportCore core = (TileEntityTeleportCore) te;
 
-                TeleportEngine.executeTeleport(
-                    world,
-                    player,
-                    core,
-                    message.targetPos,
-                    message.targetDimension,
-                    message.mode,
-                    message.isAnchorTarget
-                );
+                if (TeleportEngine.validatePreflight(world, player, core, message.targetPos, message.isAnchorTarget)) {
+                    core.startWarmup(
+                        player,
+                        message.targetPos,
+                        message.targetDimension,
+                        message.mode,
+                        message.isAnchorTarget
+                    );
+                }
             });
 
             return null;
