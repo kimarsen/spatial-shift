@@ -33,7 +33,7 @@ public class SpatialShift {
 
     public static final String MODID = "spatialshift";
     public static final String NAME = "Spatial Shift";
-    public static final String VERSION = "1.4.0";
+    public static final String VERSION = "1.4.1";
 
     @Mod.Instance(MODID)
     public static SpatialShift instance;

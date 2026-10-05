@@ -38,6 +38,8 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
     private float currentHeat = 0.0F;
     private boolean safetyLockEnabled = true;
     private int internalFuel = 0;
+    private int clientSyncedTotalFuel = 0;
+    private int clientSyncedMaxFuel = BASE_FUEL_CAPACITY;
 
     private boolean hyperdriveActive = false;
     private int networkCompartmentFuel = 0;
@@ -109,15 +111,6 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         }
         networkCompartmentFuel = compFuel;
         networkCompartmentMax = compartments.size() * TileEntityFuelCompartment.MAX_FUEL;
-
-        ItemStack stack = fuelInventory.getStackInSlot(0);
-        if (!stack.isEmpty() && stack.getItem() == ModItems.DIMENSIONAL_FUEL) {
-            if (internalFuel + 1000 <= BASE_FUEL_CAPACITY) {
-                internalFuel += 1000;
-                fuelInventory.extractItem(0, 1, false);
-                markDirty();
-            }
-        }
     }
 
     private void spawnWarmupParticles() {
@@ -296,11 +289,17 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
     }
 
     public int getTotalFuel() {
+        if (world != null && world.isRemote) {
+            return clientSyncedTotalFuel;
+        }
         int invFuel = fuelInventory.getStackInSlot(0).getCount() * 1000;
         return internalFuel + invFuel + networkCompartmentFuel;
     }
 
     public int getMaxFuel() {
+        if (world != null && world.isRemote) {
+            return clientSyncedMaxFuel;
+        }
         return BASE_FUEL_CAPACITY + networkCompartmentMax;
     }
 
@@ -351,9 +350,8 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         this.currentHeat = heat;
         this.safetyLockEnabled = lock;
         this.hyperdriveActive = hyper;
-        this.internalFuel = fuel;
-        this.networkCompartmentFuel = 0;
-        this.networkCompartmentMax = Math.max(0, maxFuel - BASE_FUEL_CAPACITY);
+        this.clientSyncedTotalFuel = fuel;
+        this.clientSyncedMaxFuel = maxFuel;
         this.warmupTicks = warmup;
         this.totalWarmupTicks = totalWarmup;
     }

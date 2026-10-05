@@ -141,27 +141,21 @@ public class ShipNetworkScanner {
 
     public static Set<BlockPos> collectShipMachinery(World world, BlockPos corePos) {
         Set<BlockPos> machinery = new HashSet<>();
+        Queue<BlockPos> queue = new ArrayDeque<>();
 
         addCubeModule(corePos, machinery);
-
-        Queue<BlockPos> queue = new ArrayDeque<>();
-        for (BlockPos p : machinery) {
-            for (EnumFacing facing : EnumFacing.VALUES) {
-                BlockPos n = p.offset(facing);
-                Block b = world.getBlockState(n).getBlock();
-                if ((b == ModBlocks.HYPER_CABLE || b == ModBlocks.FUEL_PIPE) && machinery.add(n)) {
-                    queue.add(n);
-                }
-            }
-        }
+        queue.addAll(machinery);
 
         while (!queue.isEmpty()) {
             BlockPos current = queue.poll();
 
             for (EnumFacing facing : EnumFacing.VALUES) {
                 BlockPos n = current.offset(facing);
-                Block b = world.getBlockState(n).getBlock();
+                if (machinery.contains(n)) {
+                    continue;
+                }
 
+                Block b = world.getBlockState(n).getBlock();
                 if (b == ModBlocks.HYPER_CABLE || b == ModBlocks.FUEL_PIPE) {
                     if (machinery.add(n)) {
                         queue.add(n);
@@ -169,7 +163,16 @@ public class ShipNetworkScanner {
                 } else if (b == ModBlocks.CORE_FRAME || b == ModBlocks.HYPERDRIVE_CORE || b == ModBlocks.FUEL_COMPARTMENT_CORE) {
                     BlockPos center = MultiblockValidator.findCenter(world, n);
                     if (center != null) {
-                        addCubeModule(center, machinery);
+                        for (int dy = -1; dy <= 1; dy++) {
+                            for (int dx = -1; dx <= 1; dx++) {
+                                for (int dz = -1; dz <= 1; dz++) {
+                                    BlockPos modPos = center.add(dx, dy, dz);
+                                    if (machinery.add(modPos)) {
+                                        queue.add(modPos);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

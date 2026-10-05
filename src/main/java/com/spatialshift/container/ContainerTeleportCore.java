@@ -44,6 +44,16 @@ public class ContainerTeleportCore extends Container {
     }
 
     @Override
+    public void detectAndSendChanges() {
+        super.detectAndSendChanges();
+        for (net.minecraft.inventory.IContainerListener listener : listeners) {
+            if (listener instanceof net.minecraft.entity.player.EntityPlayerMP) {
+                tileEntity.syncToPlayer((net.minecraft.entity.player.EntityPlayerMP) listener);
+            }
+        }
+    }
+
+    @Override
     public ItemStack transferStackInSlot(EntityPlayer playerIn, int index) {
         ItemStack itemstack = ItemStack.EMPTY;
         Slot slot = inventorySlots.get(index);
