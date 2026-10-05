@@ -70,6 +70,10 @@ public class BlockTeleportCore extends Block implements ITileEntityProvider {
             if (!stack.isEmpty()) {
                 InventoryHelper.spawnItemStack(world, pos.getX(), pos.getY(), pos.getZ(), stack);
             }
+            ItemStack coolant = core.getCoolantInventory().getStackInSlot(0);
+            if (!coolant.isEmpty()) {
+                InventoryHelper.spawnItemStack(world, pos.getX(), pos.getY(), pos.getZ(), coolant);
+            }
         }
         super.breakBlock(world, pos, state);
     }

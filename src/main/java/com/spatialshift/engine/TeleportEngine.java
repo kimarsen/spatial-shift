@@ -148,14 +148,22 @@ public class TeleportEngine {
 
         int minRelativeY = minY - corePos.getY();
         int maxRelativeY = maxY - corePos.getY();
-        BlockPos initialTarget = computeTargetOrigin(world, requestedTarget, mode, isAnchorTarget, maxRelativeY, minRelativeY);
-
         ChunkSafetyManager chunkManager = new ChunkSafetyManager(world);
-        if (!chunkManager.lockChunks(initialTarget, relativeOffsets)) {
+        if (!chunkManager.lockChunks(requestedTarget, relativeOffsets)) {
             world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.5F);
             player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.chunk_load_failed"), true);
             chunkManager.release();
             return;
+        }
+
+        BlockPos initialTarget = computeTargetOrigin(world, requestedTarget, mode, isAnchorTarget, maxRelativeY, minRelativeY);
+        if (!initialTarget.equals(requestedTarget)) {
+            if (!chunkManager.lockChunks(initialTarget, relativeOffsets)) {
+                world.playSound(null, corePos.getX() + 0.5, corePos.getY() + 0.5, corePos.getZ() + 0.5, SoundEvents.BLOCK_DISPENSER_FAIL, SoundCategory.BLOCKS, 1.0F, 0.5F);
+                player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.chunk_load_failed"), true);
+                chunkManager.release();
+                return;
+            }
         }
 
         BlockPos validTarget = CollisionDetector.findNearestValidPosition(world, initialTarget, relativeOffsets, corePos, 64);

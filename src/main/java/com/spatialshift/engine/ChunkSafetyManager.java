@@ -21,9 +21,28 @@ public class ChunkSafetyManager {
     }
 
     public boolean lockChunks(BlockPos origin, Set<BlockPos> relativeOffsets) {
+        int minX = origin.getX();
+        int maxX = origin.getX();
+        int minZ = origin.getZ();
+        int maxZ = origin.getZ();
+
         for (BlockPos offset : relativeOffsets) {
             BlockPos targetPos = origin.add(offset);
-            loadedChunks.add(new ChunkPos(targetPos));
+            minX = Math.min(minX, targetPos.getX());
+            maxX = Math.max(maxX, targetPos.getX());
+            minZ = Math.min(minZ, targetPos.getZ());
+            maxZ = Math.max(maxZ, targetPos.getZ());
+        }
+
+        int minChunkX = (minX >> 4) - 1;
+        int maxChunkX = (maxX >> 4) + 1;
+        int minChunkZ = (minZ >> 4) - 1;
+        int maxChunkZ = (maxZ >> 4) + 1;
+
+        for (int cx = minChunkX; cx <= maxChunkX; cx++) {
+            for (int cz = minChunkZ; cz <= maxChunkZ; cz++) {
+                loadedChunks.add(new ChunkPos(cx, cz));
+            }
         }
 
         if (ticket == null) {
@@ -36,7 +55,7 @@ public class ChunkSafetyManager {
         }
 
         for (ChunkPos cp : loadedChunks) {
-            Chunk chunk = world.getChunkProvider().loadChunk(cp.x, cp.z);
+            Chunk chunk = world.getChunkProvider().provideChunk(cp.x, cp.z);
             if (chunk == null) {
                 release();
                 return false;

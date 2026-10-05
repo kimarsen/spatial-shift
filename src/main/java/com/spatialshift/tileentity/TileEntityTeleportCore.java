@@ -60,6 +60,49 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         }
 
         @Override
+        public int getSlotLimit(int slot) {
+            int capacity = getMaxFuel();
+            int currentOther = internalFuel + networkCompartmentFuel;
+            int space = Math.max(0, capacity - currentOther);
+            int maxAllowed = space / 1000;
+            return Math.min(64, Math.max(0, maxAllowed));
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (stack.isEmpty() || stack.getItem() != ModItems.DIMENSIONAL_FUEL) {
+                return stack;
+            }
+            int limit = getSlotLimit(slot);
+            int current = getStackInSlot(slot).getCount();
+            int maxCanAdd = limit - current;
+            if (maxCanAdd <= 0) {
+                return stack;
+            }
+            if (stack.getCount() <= maxCanAdd) {
+                return super.insertItem(slot, stack, simulate);
+            }
+            ItemStack toInsert = stack.copy();
+            toInsert.setCount(maxCanAdd);
+            ItemStack remainder = stack.copy();
+            remainder.shrink(maxCanAdd);
+            super.insertItem(slot, toInsert, simulate);
+            return remainder;
+        }
+
+        @Override
+        protected void onContentsChanged(int slot) {
+            markDirty();
+        }
+    };
+
+    private final ItemStackHandler coolantInventory = new ItemStackHandler(1) {
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return isCoolantItem(stack);
+        }
+
+        @Override
         protected void onContentsChanged(int slot) {
             markDirty();
         }
@@ -81,6 +124,10 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
 
         if (world.getTotalWorldTime() % 20L == 0L) {
             updateNetworkState();
+        }
+
+        if (world.getTotalWorldTime() % 20L == 0L && currentHeat > 0.0F) {
+            processCoolantSlot();
         }
 
         if (world.getTotalWorldTime() % 40L == 0L && currentHeat > 0.0F) {
@@ -356,8 +403,75 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         this.totalWarmupTicks = totalWarmup;
     }
 
+    public static boolean isCoolantItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        Item item = stack.getItem();
+        if (item == Item.getItemFromBlock(Blocks.ICE) || item == Item.getItemFromBlock(Blocks.PACKED_ICE) || item == Items.WATER_BUCKET) {
+            return true;
+        }
+        if (item.getRegistryName() != null) {
+            String name = item.getRegistryName().toString();
+            return name.contains("coolant") || name.contains("heat_storage");
+        }
+        return false;
+    }
+
+    private void processCoolantSlot() {
+        if (currentHeat <= 0.0F) {
+            return;
+        }
+        ItemStack stack = coolantInventory.getStackInSlot(0);
+        if (stack.isEmpty()) {
+            return;
+        }
+
+        Item item = stack.getItem();
+        if (item == Item.getItemFromBlock(Blocks.ICE)) {
+            float cooling = Math.max(1.0F, 15.0F * (currentHeat / 100.0F));
+            reduceHeat(cooling);
+            stack.shrink(1);
+            if (stack.isEmpty()) {
+                coolantInventory.setStackInSlot(0, ItemStack.EMPTY);
+            }
+            playCoolingEffects(1.2F);
+            markDirty();
+        } else if (item == Item.getItemFromBlock(Blocks.PACKED_ICE)) {
+            float cooling = Math.max(2.0F, 35.0F * (currentHeat / 100.0F));
+            reduceHeat(cooling);
+            stack.shrink(1);
+            if (stack.isEmpty()) {
+                coolantInventory.setStackInSlot(0, ItemStack.EMPTY);
+            }
+            playCoolingEffects(0.9F);
+            markDirty();
+        } else if (item == Items.WATER_BUCKET) {
+            float cooling = Math.max(2.0F, 20.0F * (currentHeat / 100.0F));
+            reduceHeat(cooling);
+            coolantInventory.setStackInSlot(0, new ItemStack(Items.BUCKET));
+            playCoolingEffects(1.0F);
+            markDirty();
+        } else if (item.getRegistryName() != null) {
+            String name = item.getRegistryName().toString();
+            if (name.contains("coolant") || name.contains("heat_storage")) {
+                reduceHeat(70.0F);
+                stack.shrink(1);
+                if (stack.isEmpty()) {
+                    coolantInventory.setStackInSlot(0, ItemStack.EMPTY);
+                }
+                playCoolingEffects(0.7F);
+                markDirty();
+            }
+        }
+    }
+
     public ItemStackHandler getFuelInventory() {
         return fuelInventory;
+    }
+
+    public ItemStackHandler getCoolantInventory() {
+        return coolantInventory;
     }
 
     @Override
@@ -365,6 +479,9 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         super.readFromNBT(compound);
         if (compound.hasKey("FuelInventory")) {
             fuelInventory.deserializeNBT(compound.getCompoundTag("FuelInventory"));
+        }
+        if (compound.hasKey("CoolantInventory")) {
+            coolantInventory.deserializeNBT(compound.getCompoundTag("CoolantInventory"));
         }
         if (compound.hasKey("CurrentHeat")) {
             currentHeat = compound.getFloat("CurrentHeat");
@@ -381,6 +498,7 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
         super.writeToNBT(compound);
         compound.setTag("FuelInventory", fuelInventory.serializeNBT());
+        compound.setTag("CoolantInventory", coolantInventory.serializeNBT());
         compound.setFloat("CurrentHeat", currentHeat);
         compound.setBoolean("SafetyLock", safetyLockEnabled);
         compound.setInteger("InternalFuel", internalFuel);
