@@ -5,7 +5,9 @@ import com.spatialshift.client.ClientAnchorCache;
 import com.spatialshift.container.ContainerTeleportCore;
 import com.spatialshift.data.AnchorData;
 import com.spatialshift.data.TeleportMode;
+import com.spatialshift.init.ModItems;
 import com.spatialshift.network.PacketHandler;
+import com.spatialshift.network.packet.PacketActivateRadarArtifact;
 import com.spatialshift.network.packet.PacketTeleportRequest;
 import com.spatialshift.network.packet.PacketToggleSafetyLock;
 import com.spatialshift.tileentity.TileEntityTeleportCore;
@@ -13,10 +15,12 @@ import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.entity.player.InventoryPlayer;
 import net.minecraft.init.SoundEvents;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextFormatting;
@@ -36,6 +40,9 @@ public class GuiTeleportCore extends GuiContainer {
     private final List<AnchorData> availableAnchors = new ArrayList<>();
     private int selectedAnchorIndex = -1;
 
+    private final List<String> onlinePlayers = new ArrayList<>();
+    private int selectedPlayerIndex = 0;
+
     private boolean useAnchorTarget = false;
     private TeleportMode teleportMode = TeleportMode.LANDING;
 
@@ -49,6 +56,10 @@ public class GuiTeleportCore extends GuiContainer {
     private GuiButton buttonNextAnchor;
     private GuiButton buttonTeleport;
     private GuiButton buttonSafetyLock;
+
+    private GuiButton buttonPrevPlayer;
+    private GuiButton buttonNextPlayer;
+    private GuiButton buttonArtifactAction;
 
     public GuiTeleportCore(InventoryPlayer playerInv, TileEntityTeleportCore tileEntity) {
         super(new ContainerTeleportCore(playerInv, tileEntity));
@@ -79,6 +90,8 @@ public class GuiTeleportCore extends GuiContainer {
             selectedAnchorIndex = 0;
         }
 
+        refreshOnlinePlayers();
+
         buttonTargetType = addButton(new GuiButton(10, startX + 130, startY + 78, 38, 16, getTargetTypeText()));
         buttonMode = addButton(new GuiButton(11, startX + 10, startY + 95, 60, 16, getModeText()));
         buttonPrevAnchor = addButton(new GuiButton(12, startX + 74, startY + 95, 16, 16, "<"));
@@ -86,7 +99,29 @@ public class GuiTeleportCore extends GuiContainer {
         buttonSafetyLock = addButton(new GuiButton(15, startX + 10, startY + 134, 74, 18, getSafetyLockText()));
         buttonTeleport = addButton(new GuiButton(14, startX + 92, startY + 134, 74, 18, I18n.format("gui.spatialshift.button_teleport")));
 
+        buttonPrevPlayer = addButton(new GuiButton(20, startX + 14, startY + 16, 14, 14, "<"));
+        buttonNextPlayer = addButton(new GuiButton(21, startX + 88, startY + 16, 14, 14, ">"));
+        buttonArtifactAction = addButton(new GuiButton(22, startX + 104, startY + 16, 38, 14, "..."));
+
         updateButtonStates();
+    }
+
+    private void refreshOnlinePlayers() {
+        onlinePlayers.clear();
+        if (mc.getConnection() != null) {
+            for (NetworkPlayerInfo info : mc.getConnection().getPlayerInfoMap()) {
+                if (info.getGameProfile() != null && info.getGameProfile().getName() != null) {
+                    onlinePlayers.add(info.getGameProfile().getName());
+                }
+            }
+        }
+        if (!onlinePlayers.isEmpty()) {
+            if (selectedPlayerIndex < 0 || selectedPlayerIndex >= onlinePlayers.size()) {
+                selectedPlayerIndex = 0;
+            }
+        } else {
+            selectedPlayerIndex = 0;
+        }
     }
 
     public void updateAnchors(List<AnchorData> anchors) {
@@ -136,6 +171,33 @@ public class GuiTeleportCore extends GuiContainer {
         if (buttonTeleport != null) {
             buttonTeleport.enabled = !useAnchorTarget || !availableAnchors.isEmpty();
         }
+
+        ItemStack artifact = tileEntity.getArtifactInventory().getStackInSlot(0);
+        boolean hasShard = !artifact.isEmpty() && artifact.getItem() == ModItems.DIVINE_SIGHT_SHARD;
+        boolean hasEye = !artifact.isEmpty() && artifact.getItem() == ModItems.IMPERIAL_EYE;
+        boolean trackingActive = tileEntity.getTrackingTicks() > 0;
+        boolean eyeActive = tileEntity.getImperialEyeTicks() > 0;
+        boolean showArtifactControls = hasShard || hasEye || trackingActive || eyeActive;
+
+        if (buttonPrevPlayer != null && buttonNextPlayer != null && buttonArtifactAction != null) {
+            buttonPrevPlayer.visible = showArtifactControls && !trackingActive && !eyeActive;
+            buttonNextPlayer.visible = showArtifactControls && !trackingActive && !eyeActive;
+            buttonArtifactAction.visible = showArtifactControls;
+
+            if (trackingActive) {
+                buttonArtifactAction.enabled = false;
+                buttonArtifactAction.displayString = (tileEntity.getTrackingTicks() / 20) + "с";
+            } else if (eyeActive) {
+                buttonArtifactAction.enabled = false;
+                buttonArtifactAction.displayString = (tileEntity.getImperialEyeTicks() / 20) + "с";
+            } else if (hasShard) {
+                buttonArtifactAction.enabled = !onlinePlayers.isEmpty();
+                buttonArtifactAction.displayString = I18n.format("gui.spatialshift.btn_track");
+            } else if (hasEye) {
+                buttonArtifactAction.enabled = !onlinePlayers.isEmpty();
+                buttonArtifactAction.displayString = I18n.format("gui.spatialshift.btn_summon");
+            }
+        }
     }
 
     @Override
@@ -168,6 +230,26 @@ public class GuiTeleportCore extends GuiContainer {
             tileEntity.toggleSafetyLock();
             PacketHandler.sendToServer(new PacketToggleSafetyLock(tileEntity.getPos()));
             updateButtonStates();
+        } else if (button.id == 20) {
+            if (!onlinePlayers.isEmpty()) {
+                selectedPlayerIndex = (selectedPlayerIndex - 1 + onlinePlayers.size()) % onlinePlayers.size();
+                updateButtonStates();
+            }
+        } else if (button.id == 21) {
+            if (!onlinePlayers.isEmpty()) {
+                selectedPlayerIndex = (selectedPlayerIndex + 1) % onlinePlayers.size();
+                updateButtonStates();
+            }
+        } else if (button.id == 22) {
+            ItemStack artifact = tileEntity.getArtifactInventory().getStackInSlot(0);
+            if (!onlinePlayers.isEmpty() && selectedPlayerIndex >= 0 && selectedPlayerIndex < onlinePlayers.size()) {
+                String target = onlinePlayers.get(selectedPlayerIndex);
+                if (artifact.getItem() == ModItems.DIVINE_SIGHT_SHARD) {
+                    PacketHandler.sendToServer(new PacketActivateRadarArtifact(tileEntity.getPos(), 1, target));
+                } else if (artifact.getItem() == ModItems.IMPERIAL_EYE) {
+                    PacketHandler.sendToServer(new PacketActivateRadarArtifact(tileEntity.getPos(), 2, target));
+                }
+            }
         }
     }
 
@@ -218,34 +300,47 @@ public class GuiTeleportCore extends GuiContainer {
 
     private double calculateViewRadius() {
         BlockPos corePos = tileEntity.getPos();
-        double radius = 1000.0;
+        double maxDist = 1000.0;
 
-        try {
-            int tx = Integer.parseInt(xField.getText().trim());
-            int tz = Integer.parseInt(zField.getText().trim());
-            double distTarget = Math.sqrt(Math.pow(tx - corePos.getX(), 2) + Math.pow(tz - corePos.getZ(), 2));
-            if (distTarget > radius) {
-                radius = distTarget;
+        if (useAnchorTarget) {
+            if (selectedAnchorIndex >= 0 && selectedAnchorIndex < availableAnchors.size()) {
+                AnchorData a = availableAnchors.get(selectedAnchorIndex);
+                if (a.getDimensionId() == tileEntity.getWorld().provider.getDimension()) {
+                    double dist = Math.hypot(a.getPos().getX() - corePos.getX(), a.getPos().getZ() - corePos.getZ());
+                    if (dist > maxDist) {
+                        maxDist = dist;
+                    }
+                }
             }
-        } catch (NumberFormatException ignored) {
+        } else {
+            try {
+                int tx = Integer.parseInt(xField.getText().trim());
+                int tz = Integer.parseInt(zField.getText().trim());
+                double dist = Math.hypot(tx - corePos.getX(), tz - corePos.getZ());
+                if (dist > maxDist) {
+                    maxDist = dist;
+                }
+            } catch (NumberFormatException ignored) {
+            }
         }
 
         int currentDim = tileEntity.getWorld().provider.getDimension();
-        for (AnchorData anchor : availableAnchors) {
-            if (anchor.getDimensionId() == currentDim) {
-                double distA = Math.sqrt(Math.pow(anchor.getPos().getX() - corePos.getX(), 2) + Math.pow(anchor.getPos().getZ() - corePos.getZ(), 2));
-                if (distA > radius) {
-                    radius = distA;
+        for (AnchorData a : availableAnchors) {
+            if (a.getDimensionId() == currentDim) {
+                double dist = Math.hypot(a.getPos().getX() - corePos.getX(), a.getPos().getZ() - corePos.getZ());
+                if (dist > maxDist) {
+                    maxDist = dist;
                 }
             }
         }
 
-        return radius * 1.15;
+        return maxDist * 1.15;
     }
 
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         super.mouseClicked(mouseX, mouseY, mouseButton);
+
         if (!useAnchorTarget) {
             xField.mouseClicked(mouseX, mouseY, mouseButton);
             yField.mouseClicked(mouseX, mouseY, mouseButton);
@@ -260,6 +355,17 @@ public class GuiTeleportCore extends GuiContainer {
         int mapH = 62;
 
         if (mouseButton == 0 && mouseX >= mapX && mouseX <= mapX + mapW && mouseY >= mapY && mouseY <= mapY + mapH) {
+            if (mouseX >= startX + 145 && mouseX <= startX + 163 && mouseY >= startY + 15 && mouseY <= startY + 33) {
+                return;
+            }
+
+            ItemStack artifact = tileEntity.getArtifactInventory().getStackInSlot(0);
+            boolean hasShard = !artifact.isEmpty() && artifact.getItem() == ModItems.DIVINE_SIGHT_SHARD;
+            boolean hasEye = !artifact.isEmpty() && artifact.getItem() == ModItems.IMPERIAL_EYE;
+            if ((hasShard || hasEye) && mouseX >= startX + 14 && mouseX <= startX + 144 && mouseY >= startY + 15 && mouseY <= startY + 31) {
+                return;
+            }
+
             double radius = calculateViewRadius();
             int centerX = mapX + 78;
             int centerY = mapY + 31;
@@ -402,8 +508,73 @@ public class GuiTeleportCore extends GuiContainer {
             }
         }
 
+        if (tileEntity.getTrackingTicks() > 0) {
+            if (tileEntity.getTrackedPlayerDim() == currentDim) {
+                double targetDx = tileEntity.getTrackedPlayerX() - corePos.getX();
+                double targetDz = tileEntity.getTrackedPlayerZ() - corePos.getZ();
+                double targetDist = Math.hypot(targetDx, targetDz);
+
+                int screenTargetX = centerX + (int) Math.round(targetDx * scaleX);
+                int screenTargetY = centerY + (int) Math.round(targetDz * scaleZ);
+
+                int clampedX = Math.max(mapX + 4, Math.min(mapX + mapW - 4, screenTargetX));
+                int clampedY = Math.max(mapY + 4, Math.min(mapY + mapH - 4, screenTargetY));
+
+                if (screenTargetX < mapX + 4 || screenTargetX > mapX + mapW - 4 || screenTargetY < mapY + 4 || screenTargetY > mapY + mapH - 4) {
+                    double angle = Math.atan2(targetDz, targetDx);
+                    double borderDist = Math.min((mapW / 2.0 - 6) / Math.max(0.001, Math.abs(Math.cos(angle))), (mapH / 2.0 - 6) / Math.max(0.001, Math.abs(Math.sin(angle))));
+                    clampedX = centerX + (int) Math.round(Math.cos(angle) * borderDist);
+                    clampedY = centerY + (int) Math.round(Math.sin(angle) * borderDist);
+                }
+
+                drawLine(centerX, centerY, clampedX, clampedY, 0xEE00FFEE);
+
+                drawRect(clampedX - 2, clampedY - 2, clampedX + 3, clampedY + 3, 0xFF00FFEE);
+                drawRect(clampedX - 1, clampedY - 1, clampedX + 2, clampedY + 2, 0xFFFFFFFF);
+
+                String trackInfo = I18n.format("gui.spatialshift.radar_tracking", tileEntity.getTrackedPlayerName(), (int) targetDist, tileEntity.getTrackingTicks() / 20);
+                fontRenderer.drawString(trackInfo, mapX + 4, mapY + mapH - 10, 0xFF00FFCC);
+            } else {
+                String dimInfo = I18n.format("gui.spatialshift.radar_tracking_other_dim", tileEntity.getTrackedPlayerName(), tileEntity.getTrackingTicks() / 20);
+                fontRenderer.drawString(dimInfo, mapX + 4, mapY + mapH - 10, 0xFFAA88FF);
+            }
+        }
+
+        if (tileEntity.getImperialEyeTicks() > 0) {
+            String eyeInfo = I18n.format("gui.spatialshift.radar_eye_channeling", tileEntity.getEyeTargetPlayerName(), tileEntity.getImperialEyeTicks() / 20);
+            fontRenderer.drawString(eyeInfo, mapX + 4, mapY + mapH - 10, 0xFFFF55AA);
+
+            int pulseR = 4 + (tileEntity.getImperialEyeTicks() % 20);
+            drawCircle(centerX, centerY, pulseR, 0x80FF00AA);
+        }
+
+        ItemStack artifact = tileEntity.getArtifactInventory().getStackInSlot(0);
+        boolean hasShard = !artifact.isEmpty() && artifact.getItem() == ModItems.DIVINE_SIGHT_SHARD;
+        boolean hasEye = !artifact.isEmpty() && artifact.getItem() == ModItems.IMPERIAL_EYE;
+        boolean trackingActive = tileEntity.getTrackingTicks() > 0;
+        boolean eyeActive = tileEntity.getImperialEyeTicks() > 0;
+
+        if ((hasShard || hasEye) && !trackingActive && !eyeActive) {
+            String pName = onlinePlayers.isEmpty() ? "---" : onlinePlayers.get(selectedPlayerIndex);
+            if (fontRenderer.getStringWidth(pName) > 54) {
+                pName = fontRenderer.trimStringToWidth(pName, 48) + "..";
+            }
+            int pw = fontRenderer.getStringWidth(pName);
+            fontRenderer.drawString(pName, startX + 57 - pw / 2, startY + 19, 0xFFFFFFFF);
+        }
+
         drawRect(centerX - 2, centerY - 2, centerX + 3, centerY + 3, 0xFF00AAFF);
         drawRect(centerX - 1, centerY - 1, centerX + 2, centerY + 2, 0xFFFFFFFF);
+
+        drawRect(mapX + 135, mapY + 1, mapX + 155, mapY + 21, 0xAA0A1018);
+        drawRect(mapX + 135, mapY + 1, mapX + 155, mapY + 2, 0x80336688);
+        drawRect(mapX + 135, mapY + 20, mapX + 155, mapY + 21, 0x80336688);
+        drawRect(mapX + 135, mapY + 1, mapX + 136, mapY + 21, 0x80336688);
+        drawRect(mapX + 154, mapY + 1, mapX + 155, mapY + 21, 0x80336688);
+
+        if (artifact.isEmpty()) {
+            fontRenderer.drawString("A", mapX + 142, mapY + 7, 0x40336688);
+        }
 
         fontRenderer.drawString("N", centerX - 2, mapY + 2, 0x6088AACC);
         fontRenderer.drawString("S", centerX - 2, mapY + mapH - 8, 0x6088AACC);
@@ -445,7 +616,7 @@ public class GuiTeleportCore extends GuiContainer {
         GlStateManager.tryBlendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
         GlStateManager.color(r, g, b, a);
 
-        GL11.glLineWidth(1.0F);
+        GL11.glLineWidth(1.5F);
         GL11.glBegin(GL11.GL_LINES);
         GL11.glVertex2d(x1, y1);
         GL11.glVertex2d(x2, y2);
@@ -487,6 +658,17 @@ public class GuiTeleportCore extends GuiContainer {
         int mapY = startY + 14;
         int mapW = 156;
         int mapH = 62;
+
+        if (mouseX >= startX + 145 && mouseX <= startX + 163 && mouseY >= startY + 15 && mouseY <= startY + 33) {
+            ItemStack artifact = tileEntity.getArtifactInventory().getStackInSlot(0);
+            if (artifact.isEmpty()) {
+                drawHoveringText(Arrays.asList(
+                    TextFormatting.AQUA + I18n.format("gui.spatialshift.tooltip.artifact_slot"),
+                    TextFormatting.GRAY + I18n.format("gui.spatialshift.tooltip.artifact_slot_desc")
+                ), mouseX, mouseY);
+                return;
+            }
+        }
 
         if (mouseX >= mapX && mouseX <= mapX + mapW && mouseY >= mapY && mouseY <= mapY + mapH) {
             double radius = calculateViewRadius();

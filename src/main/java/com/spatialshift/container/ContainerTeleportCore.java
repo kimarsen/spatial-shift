@@ -38,6 +38,13 @@ public class ContainerTeleportCore extends Container {
             }
         });
 
+        addSlotToContainer(new SlotItemHandler(tileEntity.getArtifactInventory(), 0, 146, 16) {
+            @Override
+            public boolean isItemValid(ItemStack stack) {
+                return TileEntityTeleportCore.isRadarArtifact(stack);
+            }
+        });
+
         for (int row = 0; row < 3; ++row) {
             for (int col = 0; col < 9; ++col) {
                 addSlotToContainer(new Slot(playerInv, col + row * 9 + 9, 8 + col * 18, 156 + row * 18));
@@ -77,8 +84,8 @@ public class ContainerTeleportCore extends Container {
             ItemStack current = slot.getStack();
             itemstack = current.copy();
 
-            if (index < 2) {
-                if (!mergeItemStack(current, 2, 38, true)) {
+            if (index < 3) {
+                if (!mergeItemStack(current, 3, 39, true)) {
                     return ItemStack.EMPTY;
                 }
             } else {
@@ -90,11 +97,15 @@ public class ContainerTeleportCore extends Container {
                     if (!mergeItemStack(current, 1, 2, false)) {
                         return ItemStack.EMPTY;
                     }
-                } else if (index < 29) {
-                    if (!mergeItemStack(current, 29, 38, false)) {
+                } else if (TileEntityTeleportCore.isRadarArtifact(current)) {
+                    if (!mergeItemStack(current, 2, 3, false)) {
                         return ItemStack.EMPTY;
                     }
-                } else if (!mergeItemStack(current, 2, 29, false)) {
+                } else if (index < 30) {
+                    if (!mergeItemStack(current, 30, 39, false)) {
+                        return ItemStack.EMPTY;
+                    }
+                } else if (!mergeItemStack(current, 3, 30, false)) {
                     return ItemStack.EMPTY;
                 }
             }

@@ -10,11 +10,15 @@ tile.spatialshift.fuel_pipe.name=Топливная труба
 
 item.spatialshift.selection_wand.name=Жезл пространственного выделения
 item.spatialshift.dimensional_fuel.name=Пространственный катализатор
+item.spatialshift.divine_sight_shard.name=Осколок "Божественного взгляда"
+item.spatialshift.imperial_eye.name=Преобразованный Императорский Глаз
 
 tooltip.spatialshift.wand.help1=ЛКМ: Выбрать первую точку
 tooltip.spatialshift.wand.help2=ПКМ: Выбрать вторую точку / Переключить блок
 tooltip.spatialshift.wand.help3=Shift + ПКМ: Сменить режим (Область / Воксели)
 tooltip.spatialshift.fuel.desc=Катализатор для питания Ядра пространственного переноса
+tooltip.spatialshift.divine_sight_shard.desc=Остаточная энергия от первого падения в Бездну, заключенная в кристалле. Обладает сверхестественными свойствами. При загрузке в радар позволяет на минуту увидеть направление сигнатур выбранного игрока
+tooltip.spatialshift.imperial_eye.desc=Артефакт, появившийся в мире после его преобразования. Обладает сверхестественой силой, и, будто своим разумом. Позволяет без расхода топлива телепортировать выбранного игрока и область на которой он стоит и которой он должен владеть (ядро должно принадлежать ему) к вам через любое расстояние, но в одном и том же измерении. Применение накладывает эффект слепоты на 10 секунд на каждого в обоих областях, а телепортация занимает фиксированные 35 секунд. Область перемещаемого игрока телепортируется в ближайшую свободную территорию к вашей области, не задевая её.
 
 message.spatialshift.mode_changed=Режим выделения изменен на: %s
 message.spatialshift.pos1_set=Первая точка установлена: [%d, %d, %d] (Выбрано: %s)
@@ -44,6 +48,17 @@ message.spatialshift.warmup_started=Инициализация простран�
 message.spatialshift.crash_departure=Критическая авария! Коллапс аппарата на месте взлета и детонация ядра!
 message.spatialshift.crash_destination=Критическая авария! Аппарат упал в точке прибытия, ядро сдетонировало!
 message.spatialshift.crash_partial=Навигационный сбой! Прыжок совершен лишь на 60%% дистанции, ядро сдетонировало!
+
+message.spatialshift.tracking_started=Сигнатура игрока %s захвачена на 60 секунд!
+message.spatialshift.no_divine_shard=В слоте радара нет Осколка "Божественного взгляда"!
+message.spatialshift.no_imperial_eye=В слоте радара нет Преобразованного Императорского Глаза!
+message.spatialshift.eye_player_not_found=Целевой игрок не найден или не в сети!
+message.spatialshift.eye_cannot_target_self=Нельзя применить Императорский Глаз на самого себя!
+message.spatialshift.eye_different_dimension=Целевой игрок находится в другом измерении!
+message.spatialshift.eye_no_owned_core=Целевой игрок не находится на своей структуре с активным ядром!
+message.spatialshift.eye_started=Преобразованный Императорский Глаз активирован! Захват структуры игрока %s... Перенос через 35с!
+message.spatialshift.eye_targeted=Вашу структуру захватил Преобразованный Императорский Глаз игрока %s! Перенос через 35с!
+message.spatialshift.eye_success=Пространственное перемещение структуры успешно завершено!
 
 mode.spatialshift.box=Область
 mode.spatialshift.voxel=Воксели
@@ -81,3 +96,11 @@ gui.spatialshift.tooltip.anchor_click=ЛКМ: Выбрать этот якорь
 gui.spatialshift.tooltip.map_click=ЛКМ: Установить координаты цели
 gui.spatialshift.anchor_title=Пространственный якорь
 gui.spatialshift.anchor_pos=Координаты: [%d, %d, %d]
+
+gui.spatialshift.btn_track=Взгляд
+gui.spatialshift.btn_summon=Захват
+gui.spatialshift.tooltip.artifact_slot=Слот артефакта радара
+gui.spatialshift.tooltip.artifact_slot_desc=Поместите Осколок "Божественного взгляда" или Преобразованный Императорский Глаз
+gui.spatialshift.radar_tracking=Взгляд: %s (%dм) [%dс]
+gui.spatialshift.radar_tracking_other_dim=Взгляд: %s (Другое изм.) [%dс]
+gui.spatialshift.radar_eye_channeling=Захват Ока: %s [%dс]

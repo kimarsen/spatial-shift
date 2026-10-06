@@ -10,11 +10,15 @@ tile.spatialshift.fuel_pipe.name=Fuel Pipe
 
 item.spatialshift.selection_wand.name=Spatial Selection Wand
 item.spatialshift.dimensional_fuel.name=Dimensional Catalyst
+item.spatialshift.divine_sight_shard.name=Shard of Divine Sight
+item.spatialshift.imperial_eye.name=Transformed Imperial Eye
 
 tooltip.spatialshift.wand.help1=Left-Click: Set primary position
 tooltip.spatialshift.wand.help2=Right-Click: Set secondary pos / Toggle block
 tooltip.spatialshift.wand.help3=Shift + Right-Click: Switch mode (Box / Voxel)
 tooltip.spatialshift.fuel.desc=Catalyst used to fuel the Spatial Teleport Core
+tooltip.spatialshift.divine_sight_shard.desc=Residual energy from the first descent into the Abyss, sealed within a crystal. Possesses supernatural qualities. When loaded into the radar, allows tracking the signature direction of a selected player for one minute.
+tooltip.spatialshift.imperial_eye.desc=An artifact that appeared after the transformation of the world. Possesses supernatural power and seems to have a mind of its own. Allows teleporting a selected player along with the area they stand on (which they must own via a core) to you across any distance without fuel consumption, within the same dimension. Inflicts blindness for 10 seconds on all entities in both areas, and teleportation takes a fixed 35 seconds. The target player's area materializes in the nearest free space adjacent to yours without collision.
 
 message.spatialshift.mode_changed=Selection mode set to: %s
 message.spatialshift.pos1_set=Primary position set: [%d, %d, %d] (Selected: %s)
@@ -44,6 +48,17 @@ message.spatialshift.warmup_started=Teleport sequence initiated! Jump in %d seco
 message.spatialshift.crash_departure=Critical failure! Ship suffered departure collapse and core breach!
 message.spatialshift.crash_destination=Critical failure! Ship collapsed upon arrival and core breached!
 message.spatialshift.crash_partial=Navigation failure! Incomplete jump (60%% efficiency) and core breached!
+
+message.spatialshift.tracking_started=Signature of player %s acquired for 60 seconds!
+message.spatialshift.no_divine_shard=No Shard of Divine Sight in the radar slot!
+message.spatialshift.no_imperial_eye=No Transformed Imperial Eye in the radar slot!
+message.spatialshift.eye_player_not_found=Target player was not found or is offline!
+message.spatialshift.eye_cannot_target_self=You cannot target yourself with the Imperial Eye!
+message.spatialshift.eye_different_dimension=Target player is in a different dimension!
+message.spatialshift.eye_no_owned_core=Target player is not standing on a structure with an active core they own!
+message.spatialshift.eye_started=Transformed Imperial Eye activated! Locking onto %s's structure... Jump in 35s!
+message.spatialshift.eye_targeted=Your structure has been locked by %s's Transformed Imperial Eye! Relocation in 35s!
+message.spatialshift.eye_success=Spatial structure relocation completed successfully!
 
 mode.spatialshift.box=Box
 mode.spatialshift.voxel=Voxel
@@ -81,3 +96,11 @@ gui.spatialshift.tooltip.anchor_click=LMB: Select this anchor
 gui.spatialshift.tooltip.map_click=LMB: Set target coordinates
 gui.spatialshift.anchor_title=Spatial Anchor
 gui.spatialshift.anchor_pos=Position: [%d, %d, %d]
+
+gui.spatialshift.btn_track=Track
+gui.spatialshift.btn_summon=Summon
+gui.spatialshift.tooltip.artifact_slot=Radar Artifact Slot
+gui.spatialshift.tooltip.artifact_slot_desc=Insert Shard of Divine Sight or Transformed Imperial Eye
+gui.spatialshift.radar_tracking=Sight: %s (%dm) [%ds]
+gui.spatialshift.radar_tracking_other_dim=Sight: %s (Other Dim) [%ds]
+gui.spatialshift.radar_eye_channeling=Eye Channeling: %s [%ds]

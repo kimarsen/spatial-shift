@@ -8,6 +8,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.ITileEntityProvider;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.SoundEvents;
 import net.minecraft.inventory.InventoryHelper;
@@ -34,6 +35,15 @@ public class BlockTeleportCore extends Block implements ITileEntityProvider {
     }
 
     @Override
+    public void onBlockPlacedBy(World world, BlockPos pos, IBlockState state, EntityLivingBase placer, ItemStack stack) {
+        super.onBlockPlacedBy(world, pos, state, placer, stack);
+        TileEntity te = world.getTileEntity(pos);
+        if (te instanceof TileEntityTeleportCore && placer instanceof EntityPlayer) {
+            ((TileEntityTeleportCore) te).setOwnerUuid(placer.getUniqueID());
+        }
+    }
+
+    @Override
     public boolean onBlockActivated(World world, BlockPos pos, IBlockState state, EntityPlayer player, EnumHand hand, EnumFacing facing, float hitX, float hitY, float hitZ) {
         if (world.isRemote) {
             return true;
@@ -42,6 +52,10 @@ public class BlockTeleportCore extends Block implements ITileEntityProvider {
         TileEntity te = world.getTileEntity(pos);
         if (te instanceof TileEntityTeleportCore) {
             TileEntityTeleportCore core = (TileEntityTeleportCore) te;
+            if (core.getOwnerUuid() == null) {
+                core.setOwnerUuid(player.getUniqueID());
+            }
+
             if (core.applyCoolant(player.getHeldItem(hand), player)) {
                 return true;
             }
@@ -73,6 +87,10 @@ public class BlockTeleportCore extends Block implements ITileEntityProvider {
             ItemStack coolant = core.getCoolantInventory().getStackInSlot(0);
             if (!coolant.isEmpty()) {
                 InventoryHelper.spawnItemStack(world, pos.getX(), pos.getY(), pos.getZ(), coolant);
+            }
+            ItemStack artifact = core.getArtifactInventory().getStackInSlot(0);
+            if (!artifact.isEmpty()) {
+                InventoryHelper.spawnItemStack(world, pos.getX(), pos.getY(), pos.getZ(), artifact);
             }
         }
         super.breakBlock(world, pos, state);

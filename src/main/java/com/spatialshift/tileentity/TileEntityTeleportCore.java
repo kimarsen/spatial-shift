@@ -1,6 +1,7 @@
 package com.spatialshift.tileentity;
 
 import com.spatialshift.data.TeleportMode;
+import com.spatialshift.engine.ImperialEyeEngine;
 import com.spatialshift.engine.TeleportEngine;
 import com.spatialshift.init.ModItems;
 import com.spatialshift.multiblock.ShipNetworkScanner;
@@ -35,6 +36,7 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
     public static final float SAFE_HEAT_THRESHOLD = 75.0F;
     public static final int BASE_FUEL_CAPACITY = 10000;
 
+    private UUID ownerUuid = null;
     private float currentHeat = 0.0F;
     private boolean safetyLockEnabled = true;
     private int internalFuel = 0;
@@ -52,6 +54,17 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
     private TeleportMode pendingMode = null;
     private boolean pendingAnchorTarget = false;
     private UUID pendingPlayerUuid = null;
+
+    private int trackingTicks = 0;
+    private UUID trackedPlayerUuid = null;
+    private String trackedPlayerName = "";
+    private double trackedPlayerX = 0;
+    private double trackedPlayerZ = 0;
+    private int trackedPlayerDim = 0;
+
+    private int imperialEyeTicks = 0;
+    private UUID eyeTargetPlayerUuid = null;
+    private String eyeTargetPlayerName = "";
 
     private final ItemStackHandler fuelInventory = new ItemStackHandler(1) {
         @Override
@@ -108,6 +121,27 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         }
     };
 
+    private final ItemStackHandler artifactInventory = new ItemStackHandler(1) {
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return isRadarArtifact(stack);
+        }
+
+        @Override
+        protected void onContentsChanged(int slot) {
+            markDirty();
+        }
+    };
+
+    public UUID getOwnerUuid() {
+        return ownerUuid;
+    }
+
+    public void setOwnerUuid(UUID ownerUuid) {
+        this.ownerUuid = ownerUuid;
+        markDirty();
+    }
+
     @Override
     public void update() {
         if (world == null) {
@@ -118,6 +152,13 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
             if (warmupTicks > 0) {
                 warmupTicks--;
                 spawnWarmupParticles();
+            }
+            if (imperialEyeTicks > 0) {
+                imperialEyeTicks--;
+                spawnImperialEyeParticles();
+            }
+            if (trackingTicks > 0) {
+                trackingTicks--;
             }
             return;
         }
@@ -147,6 +188,32 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
                 executeWarmupTeleport();
             }
         }
+
+        if (trackingTicks > 0) {
+            trackingTicks--;
+            if (world instanceof WorldServer && trackedPlayerUuid != null) {
+                EntityPlayer target = world.getPlayerEntityByUUID(trackedPlayerUuid);
+                if (target != null) {
+                    trackedPlayerX = target.posX;
+                    trackedPlayerZ = target.posZ;
+                    trackedPlayerDim = target.dimension;
+                }
+            }
+        }
+
+        if (imperialEyeTicks > 0) {
+            imperialEyeTicks--;
+            spawnImperialEyeParticles();
+
+            if (imperialEyeTicks % 20 == 0) {
+                float pitch = 0.5F + (1.0F - (float) imperialEyeTicks / 700.0F) * 0.5F;
+                world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_PORTAL_TRIGGER, SoundCategory.BLOCKS, 1.0F, pitch);
+            }
+
+            if (imperialEyeTicks == 0) {
+                executeImperialEyeTeleport();
+            }
+        }
     }
 
     private void updateNetworkState() {
@@ -168,6 +235,19 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
                 double py = pos.getY() + 1.0 + ws.rand.nextDouble() * 2.0;
                 double pz = pos.getZ() + 0.5 + (ws.rand.nextDouble() - 0.5) * 2.0;
                 ws.spawnParticle(EnumParticleTypes.PORTAL, px, py, pz, 1, 0, 0, 0, 0.05);
+            }
+        }
+    }
+
+    private void spawnImperialEyeParticles() {
+        if (world instanceof WorldServer) {
+            WorldServer ws = (WorldServer) world;
+            for (int i = 0; i < 6; i++) {
+                double px = pos.getX() + 0.5 + (ws.rand.nextDouble() - 0.5) * 2.5;
+                double py = pos.getY() + 1.0 + ws.rand.nextDouble() * 2.5;
+                double pz = pos.getZ() + 0.5 + (ws.rand.nextDouble() - 0.5) * 2.5;
+                ws.spawnParticle(EnumParticleTypes.DRAGON_BREATH, px, py, pz, 1, 0, 0.02, 0, 0.02);
+                ws.spawnParticle(EnumParticleTypes.ENCHANTMENT_TABLE, px, py, pz, 1, 0, 0, 0, 0.1);
             }
         }
     }
@@ -206,6 +286,92 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         pendingTarget = null;
         pendingPlayerUuid = null;
         totalWarmupTicks = 0;
+        markDirty();
+    }
+
+    public void activateDivineSight(EntityPlayerMP player, String targetName) {
+        if (world == null || world.isRemote) {
+            return;
+        }
+
+        ItemStack stack = artifactInventory.getStackInSlot(0);
+        if (stack.isEmpty() || stack.getItem() != ModItems.DIVINE_SIGHT_SHARD) {
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_divine_shard"), true);
+            return;
+        }
+
+        EntityPlayerMP target = world.getMinecraftServer().getPlayerList().getPlayerByUsername(targetName);
+        if (target == null) {
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.eye_player_not_found"), true);
+            return;
+        }
+
+        artifactInventory.extractItem(0, 1, false);
+        markDirty();
+
+        this.trackingTicks = 1200;
+        this.trackedPlayerUuid = target.getUniqueID();
+        this.trackedPlayerName = target.getName();
+        this.trackedPlayerX = target.posX;
+        this.trackedPlayerZ = target.posZ;
+        this.trackedPlayerDim = target.dimension;
+
+        world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.ITEM_CHORUS_FRUIT_TELEPORT, SoundCategory.BLOCKS, 1.0F, 1.5F);
+        player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.tracking_started", target.getName()), true);
+
+        syncToPlayer(player);
+    }
+
+    public void activateImperialEye(EntityPlayerMP summoner, String targetName) {
+        if (!(world instanceof WorldServer)) {
+            return;
+        }
+        WorldServer ws = (WorldServer) world;
+
+        ItemStack stack = artifactInventory.getStackInSlot(0);
+        if (stack.isEmpty() || stack.getItem() != ModItems.IMPERIAL_EYE) {
+            summoner.sendStatusMessage(new TextComponentTranslation("message.spatialshift.no_imperial_eye"), true);
+            return;
+        }
+
+        ImperialEyeEngine.ValidationResult res = ImperialEyeEngine.validateTarget(ws, summoner, this, targetName);
+        if (!res.success) {
+            summoner.sendStatusMessage(new TextComponentTranslation(res.errorMessageKey), true);
+            return;
+        }
+
+        artifactInventory.extractItem(0, 1, false);
+        markDirty();
+
+        this.imperialEyeTicks = 700;
+        this.eyeTargetPlayerUuid = res.targetPlayer.getUniqueID();
+        this.eyeTargetPlayerName = res.targetPlayer.getName();
+
+        ImperialEyeEngine.applyInitiationEffects(ws, this, summoner, res.targetCore, res.targetPlayer);
+
+        syncToPlayer(summoner);
+    }
+
+    private void executeImperialEyeTeleport() {
+        if (world instanceof WorldServer && eyeTargetPlayerUuid != null) {
+            WorldServer ws = (WorldServer) world;
+            EntityPlayerMP summoner = null;
+            if (ownerUuid != null) {
+                summoner = (EntityPlayerMP) ws.getPlayerEntityByUUID(ownerUuid);
+            }
+            if (summoner == null) {
+                List<EntityPlayerMP> players = ws.getPlayers(EntityPlayerMP.class, p -> p.getDistanceSq(pos) <= 64.0 * 64.0);
+                if (!players.isEmpty()) {
+                    summoner = players.get(0);
+                }
+            }
+
+            if (summoner != null) {
+                ImperialEyeEngine.executeRelocation(ws, this, summoner, eyeTargetPlayerUuid);
+            }
+        }
+        eyeTargetPlayerUuid = null;
+        eyeTargetPlayerName = "";
         markDirty();
     }
 
@@ -385,15 +551,74 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         return totalWarmupTicks;
     }
 
+    public int getTrackingTicks() {
+        return trackingTicks;
+    }
+
+    public String getTrackedPlayerName() {
+        return trackedPlayerName;
+    }
+
+    public double getTrackedPlayerX() {
+        return trackedPlayerX;
+    }
+
+    public double getTrackedPlayerZ() {
+        return trackedPlayerZ;
+    }
+
+    public int getTrackedPlayerDim() {
+        return trackedPlayerDim;
+    }
+
+    public int getImperialEyeTicks() {
+        return imperialEyeTicks;
+    }
+
+    public String getEyeTargetPlayerName() {
+        return eyeTargetPlayerName;
+    }
+
     public void syncToPlayer(EntityPlayerMP player) {
         updateNetworkState();
         PacketHandler.sendTo(
-            new PacketSyncCoreState(pos, currentHeat, safetyLockEnabled, hyperdriveActive, getTotalFuel(), getMaxFuel(), warmupTicks, totalWarmupTicks),
+            new PacketSyncCoreState(
+                pos,
+                currentHeat,
+                safetyLockEnabled,
+                hyperdriveActive,
+                getTotalFuel(),
+                getMaxFuel(),
+                warmupTicks,
+                totalWarmupTicks,
+                trackingTicks,
+                trackedPlayerName,
+                trackedPlayerX,
+                trackedPlayerZ,
+                trackedPlayerDim,
+                imperialEyeTicks,
+                eyeTargetPlayerName
+            ),
             player
         );
     }
 
-    public void setClientSyncedState(float heat, boolean lock, boolean hyper, int fuel, int maxFuel, int warmup, int totalWarmup) {
+    public void setClientSyncedState(
+        float heat,
+        boolean lock,
+        boolean hyper,
+        int fuel,
+        int maxFuel,
+        int warmup,
+        int totalWarmup,
+        int tracking,
+        String trackedName,
+        double trackedX,
+        double trackedZ,
+        int trackedDim,
+        int eyeTicks,
+        String eyeName
+    ) {
         this.currentHeat = heat;
         this.safetyLockEnabled = lock;
         this.hyperdriveActive = hyper;
@@ -401,6 +626,13 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         this.clientSyncedMaxFuel = maxFuel;
         this.warmupTicks = warmup;
         this.totalWarmupTicks = totalWarmup;
+        this.trackingTicks = tracking;
+        this.trackedPlayerName = trackedName;
+        this.trackedPlayerX = trackedX;
+        this.trackedPlayerZ = trackedZ;
+        this.trackedPlayerDim = trackedDim;
+        this.imperialEyeTicks = eyeTicks;
+        this.eyeTargetPlayerName = eyeName;
     }
 
     public static boolean isCoolantItem(ItemStack stack) {
@@ -416,6 +648,13 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
             return name.contains("coolant") || name.contains("heat_storage");
         }
         return false;
+    }
+
+    public static boolean isRadarArtifact(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        return stack.getItem() == ModItems.DIVINE_SIGHT_SHARD || stack.getItem() == ModItems.IMPERIAL_EYE;
     }
 
     private void processCoolantSlot() {
@@ -474,14 +713,24 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         return coolantInventory;
     }
 
+    public ItemStackHandler getArtifactInventory() {
+        return artifactInventory;
+    }
+
     @Override
     public void readFromNBT(NBTTagCompound compound) {
         super.readFromNBT(compound);
+        if (compound.hasUniqueId("Owner")) {
+            this.ownerUuid = compound.getUniqueId("Owner");
+        }
         if (compound.hasKey("FuelInventory")) {
             fuelInventory.deserializeNBT(compound.getCompoundTag("FuelInventory"));
         }
         if (compound.hasKey("CoolantInventory")) {
             coolantInventory.deserializeNBT(compound.getCompoundTag("CoolantInventory"));
+        }
+        if (compound.hasKey("ArtifactInventory")) {
+            artifactInventory.deserializeNBT(compound.getCompoundTag("ArtifactInventory"));
         }
         if (compound.hasKey("CurrentHeat")) {
             currentHeat = compound.getFloat("CurrentHeat");
@@ -492,16 +741,48 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         if (compound.hasKey("InternalFuel")) {
             internalFuel = compound.getInteger("InternalFuel");
         }
+        if (compound.hasKey("TrackingTicks")) {
+            trackingTicks = compound.getInteger("TrackingTicks");
+        }
+        if (compound.hasUniqueId("TrackedPlayer")) {
+            trackedPlayerUuid = compound.getUniqueId("TrackedPlayer");
+        }
+        if (compound.hasKey("TrackedPlayerName")) {
+            trackedPlayerName = compound.getString("TrackedPlayerName");
+        }
+        if (compound.hasKey("ImperialEyeTicks")) {
+            imperialEyeTicks = compound.getInteger("ImperialEyeTicks");
+        }
+        if (compound.hasUniqueId("EyeTargetPlayer")) {
+            eyeTargetPlayerUuid = compound.getUniqueId("EyeTargetPlayer");
+        }
+        if (compound.hasKey("EyeTargetPlayerName")) {
+            eyeTargetPlayerName = compound.getString("EyeTargetPlayerName");
+        }
     }
 
     @Override
     public NBTTagCompound writeToNBT(NBTTagCompound compound) {
         super.writeToNBT(compound);
+        if (ownerUuid != null) {
+            compound.setUniqueId("Owner", ownerUuid);
+        }
         compound.setTag("FuelInventory", fuelInventory.serializeNBT());
         compound.setTag("CoolantInventory", coolantInventory.serializeNBT());
+        compound.setTag("ArtifactInventory", artifactInventory.serializeNBT());
         compound.setFloat("CurrentHeat", currentHeat);
         compound.setBoolean("SafetyLock", safetyLockEnabled);
         compound.setInteger("InternalFuel", internalFuel);
+        compound.setInteger("TrackingTicks", trackingTicks);
+        if (trackedPlayerUuid != null) {
+            compound.setUniqueId("TrackedPlayer", trackedPlayerUuid);
+        }
+        compound.setString("TrackedPlayerName", trackedPlayerName);
+        compound.setInteger("ImperialEyeTicks", imperialEyeTicks);
+        if (eyeTargetPlayerUuid != null) {
+            compound.setUniqueId("EyeTargetPlayer", eyeTargetPlayerUuid);
+        }
+        compound.setString("EyeTargetPlayerName", eyeTargetPlayerName);
         return compound;
     }
 
