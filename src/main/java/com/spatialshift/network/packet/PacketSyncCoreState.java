@@ -27,6 +27,10 @@ public class PacketSyncCoreState implements IMessage {
     private int trackedPlayerDim;
     private int imperialEyeTicks;
     private String eyeTargetPlayerName;
+    private boolean eyeConsentReceived;
+    private int incomingEyeTicks;
+    private String incomingEyeInitiatorName;
+    private boolean incomingEyeConsentGiven;
 
     public PacketSyncCoreState() {
     }
@@ -46,7 +50,11 @@ public class PacketSyncCoreState implements IMessage {
         double trackedPlayerZ,
         int trackedPlayerDim,
         int imperialEyeTicks,
-        String eyeTargetPlayerName
+        String eyeTargetPlayerName,
+        boolean eyeConsentReceived,
+        int incomingEyeTicks,
+        String incomingEyeInitiatorName,
+        boolean incomingEyeConsentGiven
     ) {
         this.corePos = corePos;
         this.currentHeat = currentHeat;
@@ -63,6 +71,10 @@ public class PacketSyncCoreState implements IMessage {
         this.trackedPlayerDim = trackedPlayerDim;
         this.imperialEyeTicks = imperialEyeTicks;
         this.eyeTargetPlayerName = eyeTargetPlayerName != null ? eyeTargetPlayerName : "";
+        this.eyeConsentReceived = eyeConsentReceived;
+        this.incomingEyeTicks = incomingEyeTicks;
+        this.incomingEyeInitiatorName = incomingEyeInitiatorName != null ? incomingEyeInitiatorName : "";
+        this.incomingEyeConsentGiven = incomingEyeConsentGiven;
     }
 
     @Override
@@ -82,6 +94,10 @@ public class PacketSyncCoreState implements IMessage {
         this.trackedPlayerDim = buf.readInt();
         this.imperialEyeTicks = buf.readInt();
         this.eyeTargetPlayerName = ByteBufUtils.readUTF8String(buf);
+        this.eyeConsentReceived = buf.readBoolean();
+        this.incomingEyeTicks = buf.readInt();
+        this.incomingEyeInitiatorName = ByteBufUtils.readUTF8String(buf);
+        this.incomingEyeConsentGiven = buf.readBoolean();
     }
 
     @Override
@@ -101,6 +117,10 @@ public class PacketSyncCoreState implements IMessage {
         buf.writeInt(trackedPlayerDim);
         buf.writeInt(imperialEyeTicks);
         ByteBufUtils.writeUTF8String(buf, eyeTargetPlayerName);
+        buf.writeBoolean(eyeConsentReceived);
+        buf.writeInt(incomingEyeTicks);
+        ByteBufUtils.writeUTF8String(buf, incomingEyeInitiatorName);
+        buf.writeBoolean(incomingEyeConsentGiven);
     }
 
     public static class Handler implements IMessageHandler<PacketSyncCoreState, IMessage> {
@@ -125,7 +145,11 @@ public class PacketSyncCoreState implements IMessage {
                             message.trackedPlayerZ,
                             message.trackedPlayerDim,
                             message.imperialEyeTicks,
-                            message.eyeTargetPlayerName
+                            message.eyeTargetPlayerName,
+                            message.eyeConsentReceived,
+                            message.incomingEyeTicks,
+                            message.incomingEyeInitiatorName,
+                            message.incomingEyeConsentGiven
                         );
                     }
                 }

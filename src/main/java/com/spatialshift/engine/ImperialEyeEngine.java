@@ -182,6 +182,8 @@ public class ImperialEyeEngine {
             maxZ = Math.max(maxZ, p.getZ());
         }
 
+        targetCore.clearIncomingEyeRequest();
+
         VoxelSnapshot snapshot = createSnapshot(world, targetCorePos, targetOffsets, minX, minY, minZ, maxX, maxY, maxZ);
         if (!snapshot.getEntities().contains(targetPlayer)) {
             snapshot.getEntities().add(targetPlayer);

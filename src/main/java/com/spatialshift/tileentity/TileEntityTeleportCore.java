@@ -65,6 +65,13 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
     private int imperialEyeTicks = 0;
     private UUID eyeTargetPlayerUuid = null;
     private String eyeTargetPlayerName = "";
+    private boolean eyeConsentReceived = false;
+
+    private int incomingEyeTicks = 0;
+    private String incomingEyeInitiatorName = "";
+    private BlockPos incomingEyeInitiatorPos = null;
+    private UUID incomingEyeInitiatorPlayerUuid = null;
+    private boolean incomingEyeConsentGiven = false;
 
     private final ItemStackHandler fuelInventory = new ItemStackHandler(1) {
         @Override
@@ -157,6 +164,10 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
                 imperialEyeTicks--;
                 spawnImperialEyeParticles();
             }
+            if (incomingEyeTicks > 0) {
+                incomingEyeTicks--;
+                spawnImperialEyeParticles();
+            }
             if (trackingTicks > 0) {
                 trackingTicks--;
             }
@@ -201,6 +212,20 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
             }
         }
 
+        if (incomingEyeTicks > 0) {
+            incomingEyeTicks--;
+            spawnImperialEyeParticles();
+
+            if (incomingEyeTicks % 20 == 0) {
+                float pitch = 0.5F + (1.0F - (float) incomingEyeTicks / 700.0F) * 0.5F;
+                world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_PORTAL_TRIGGER, SoundCategory.BLOCKS, 1.0F, pitch);
+            }
+
+            if (incomingEyeTicks == 0) {
+                clearIncomingEyeRequest();
+            }
+        }
+
         if (imperialEyeTicks > 0) {
             imperialEyeTicks--;
             spawnImperialEyeParticles();
@@ -211,7 +236,11 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
             }
 
             if (imperialEyeTicks == 0) {
-                executeImperialEyeTeleport();
+                if (eyeConsentReceived) {
+                    executeImperialEyeTeleport();
+                } else {
+                    abortImperialEyeTeleportTimeout();
+                }
             }
         }
     }
@@ -344,12 +373,130 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         markDirty();
 
         this.imperialEyeTicks = 700;
+        this.eyeConsentReceived = false;
         this.eyeTargetPlayerUuid = res.targetPlayer.getUniqueID();
         this.eyeTargetPlayerName = res.targetPlayer.getName();
+
+        res.targetCore.setIncomingEyeRequest(summoner.getName(), summoner.getUniqueID(), this.pos, 700);
 
         ImperialEyeEngine.applyInitiationEffects(ws, this, summoner, res.targetCore, res.targetPlayer);
 
         syncToPlayer(summoner);
+        res.targetCore.syncToPlayer(res.targetPlayer);
+    }
+
+    public void setIncomingEyeRequest(String initiatorName, UUID initiatorUuid, BlockPos initiatorPos, int ticks) {
+        this.incomingEyeInitiatorName = initiatorName;
+        this.incomingEyeInitiatorPlayerUuid = initiatorUuid;
+        this.incomingEyeInitiatorPos = initiatorPos;
+        this.incomingEyeTicks = ticks;
+        this.incomingEyeConsentGiven = false;
+        markDirty();
+    }
+
+    public void clearIncomingEyeRequest() {
+        this.incomingEyeInitiatorName = "";
+        this.incomingEyeInitiatorPlayerUuid = null;
+        this.incomingEyeInitiatorPos = null;
+        this.incomingEyeTicks = 0;
+        this.incomingEyeConsentGiven = false;
+        markDirty();
+    }
+
+    public void handleEyeConsent(EntityPlayerMP player, boolean accept) {
+        if (world == null || !(world instanceof WorldServer)) {
+            return;
+        }
+        if (incomingEyeTicks <= 0 || incomingEyeInitiatorPos == null) {
+            return;
+        }
+        WorldServer ws = (WorldServer) world;
+
+        TileEntity initTe = ws.getTileEntity(incomingEyeInitiatorPos);
+        TileEntityTeleportCore initCore = (initTe instanceof TileEntityTeleportCore) ? (TileEntityTeleportCore) initTe : null;
+
+        EntityPlayerMP initiatorPlayer = null;
+        if (incomingEyeInitiatorPlayerUuid != null) {
+            initiatorPlayer = (EntityPlayerMP) ws.getPlayerEntityByUUID(incomingEyeInitiatorPlayerUuid);
+        }
+
+        if (accept) {
+            this.incomingEyeConsentGiven = true;
+            markDirty();
+
+            if (initCore != null) {
+                initCore.setEyeConsentReceived(true);
+            }
+
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.eye_consent_accepted_target"), true);
+            if (initiatorPlayer != null) {
+                int secs = (initCore != null && initCore.getImperialEyeTicks() > 0) ? (initCore.getImperialEyeTicks() / 20) : (incomingEyeTicks / 20);
+                initiatorPlayer.sendStatusMessage(new TextComponentTranslation("message.spatialshift.eye_consent_accepted_initiator", player.getName(), secs), true);
+            }
+        } else {
+            clearIncomingEyeRequest();
+
+            if (initCore != null) {
+                initCore.abortImperialEyeTeleport(true);
+            }
+
+            ws.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_REDSTONE_TORCH_BURNOUT, SoundCategory.BLOCKS, 1.0F, 0.8F);
+            player.sendStatusMessage(new TextComponentTranslation("message.spatialshift.eye_consent_declined_target", (initiatorPlayer != null ? initiatorPlayer.getName() : incomingEyeInitiatorName)), true);
+            if (initiatorPlayer != null) {
+                initiatorPlayer.sendStatusMessage(new TextComponentTranslation("message.spatialshift.eye_consent_declined_initiator", player.getName()), true);
+            }
+        }
+    }
+
+    public void abortImperialEyeTeleport(boolean wasDeclined) {
+        this.imperialEyeTicks = 0;
+        this.eyeConsentReceived = false;
+        this.eyeTargetPlayerUuid = null;
+        this.eyeTargetPlayerName = "";
+        markDirty();
+
+        if (world != null) {
+            world.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_REDSTONE_TORCH_BURNOUT, SoundCategory.BLOCKS, 1.0F, 0.8F);
+        }
+    }
+
+    private void abortImperialEyeTeleportTimeout() {
+        if (world instanceof WorldServer) {
+            WorldServer ws = (WorldServer) world;
+            EntityPlayerMP summoner = null;
+            if (ownerUuid != null) {
+                summoner = (EntityPlayerMP) ws.getPlayerEntityByUUID(ownerUuid);
+            }
+            if (summoner == null) {
+                List<EntityPlayerMP> players = ws.getPlayers(EntityPlayerMP.class, p -> p.getDistanceSq(pos) <= 64.0 * 64.0);
+                if (!players.isEmpty()) {
+                    summoner = players.get(0);
+                }
+            }
+
+            if (summoner != null) {
+                summoner.sendStatusMessage(new TextComponentTranslation("message.spatialshift.eye_consent_timeout_initiator", eyeTargetPlayerName), true);
+            }
+
+            if (eyeTargetPlayerUuid != null) {
+                EntityPlayerMP target = (EntityPlayerMP) ws.getPlayerEntityByUUID(eyeTargetPlayerUuid);
+                if (target != null) {
+                    target.sendStatusMessage(new TextComponentTranslation("message.spatialshift.eye_consent_timeout_target"), true);
+                    TileEntityTeleportCore targetCore = ImperialEyeEngine.findOwnedCoreNearPlayer(ws, target);
+                    if (targetCore != null) {
+                        targetCore.clearIncomingEyeRequest();
+                    }
+                }
+            }
+
+            ws.playSound(null, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, SoundEvents.BLOCK_REDSTONE_TORCH_BURNOUT, SoundCategory.BLOCKS, 1.0F, 0.8F);
+        }
+
+        imperialEyeTicks = 0;
+        eyeConsentReceived = false;
+        eyeTargetPlayerUuid = null;
+        eyeTargetPlayerName = "";
+        markDirty();
     }
 
     private void executeImperialEyeTeleport() {
@@ -370,6 +517,8 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
                 ImperialEyeEngine.executeRelocation(ws, this, summoner, eyeTargetPlayerUuid);
             }
         }
+        imperialEyeTicks = 0;
+        eyeConsentReceived = false;
         eyeTargetPlayerUuid = null;
         eyeTargetPlayerName = "";
         markDirty();
@@ -579,6 +728,37 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         return eyeTargetPlayerName;
     }
 
+    public boolean isEyeConsentReceived() {
+        return eyeConsentReceived;
+    }
+
+    public void setEyeConsentReceived(boolean received) {
+        this.eyeConsentReceived = received;
+        markDirty();
+    }
+
+    public int getIncomingEyeTicks() {
+        return incomingEyeTicks;
+    }
+
+    public void setIncomingEyeTicks(int ticks) {
+        this.incomingEyeTicks = ticks;
+        markDirty();
+    }
+
+    public String getIncomingEyeInitiatorName() {
+        return incomingEyeInitiatorName;
+    }
+
+    public boolean isIncomingEyeConsentGiven() {
+        return incomingEyeConsentGiven;
+    }
+
+    public void setIncomingEyeConsentGiven(boolean consent) {
+        this.incomingEyeConsentGiven = consent;
+        markDirty();
+    }
+
     public void syncToPlayer(EntityPlayerMP player) {
         updateNetworkState();
         PacketHandler.sendTo(
@@ -597,7 +777,11 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
                 trackedPlayerZ,
                 trackedPlayerDim,
                 imperialEyeTicks,
-                eyeTargetPlayerName
+                eyeTargetPlayerName,
+                eyeConsentReceived,
+                incomingEyeTicks,
+                incomingEyeInitiatorName,
+                incomingEyeConsentGiven
             ),
             player
         );
@@ -617,7 +801,11 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         double trackedZ,
         int trackedDim,
         int eyeTicks,
-        String eyeName
+        String eyeName,
+        boolean consentReceived,
+        int inEyeTicks,
+        String inEyeName,
+        boolean inConsentGiven
     ) {
         this.currentHeat = heat;
         this.safetyLockEnabled = lock;
@@ -633,6 +821,10 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         this.trackedPlayerDim = trackedDim;
         this.imperialEyeTicks = eyeTicks;
         this.eyeTargetPlayerName = eyeName;
+        this.eyeConsentReceived = consentReceived;
+        this.incomingEyeTicks = inEyeTicks;
+        this.incomingEyeInitiatorName = inEyeName;
+        this.incomingEyeConsentGiven = inConsentGiven;
     }
 
     public static boolean isCoolantItem(ItemStack stack) {
@@ -759,6 +951,28 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
         if (compound.hasKey("EyeTargetPlayerName")) {
             eyeTargetPlayerName = compound.getString("EyeTargetPlayerName");
         }
+        if (compound.hasKey("EyeConsentReceived")) {
+            eyeConsentReceived = compound.getBoolean("EyeConsentReceived");
+        }
+        if (compound.hasKey("IncomingEyeTicks")) {
+            incomingEyeTicks = compound.getInteger("IncomingEyeTicks");
+        }
+        if (compound.hasKey("IncomingEyeInitiatorName")) {
+            incomingEyeInitiatorName = compound.getString("IncomingEyeInitiatorName");
+        }
+        if (compound.hasKey("IncomingEyeConsentGiven")) {
+            incomingEyeConsentGiven = compound.getBoolean("IncomingEyeConsentGiven");
+        }
+        if (compound.hasUniqueId("IncomingEyeInitiatorPlayer")) {
+            incomingEyeInitiatorPlayerUuid = compound.getUniqueId("IncomingEyeInitiatorPlayer");
+        }
+        if (compound.hasKey("IncomingEyeInitiatorPosX")) {
+            incomingEyeInitiatorPos = new BlockPos(
+                compound.getInteger("IncomingEyeInitiatorPosX"),
+                compound.getInteger("IncomingEyeInitiatorPosY"),
+                compound.getInteger("IncomingEyeInitiatorPosZ")
+            );
+        }
     }
 
     @Override
@@ -783,6 +997,18 @@ public class TileEntityTeleportCore extends TileEntity implements ITickable {
             compound.setUniqueId("EyeTargetPlayer", eyeTargetPlayerUuid);
         }
         compound.setString("EyeTargetPlayerName", eyeTargetPlayerName);
+        compound.setBoolean("EyeConsentReceived", eyeConsentReceived);
+        compound.setInteger("IncomingEyeTicks", incomingEyeTicks);
+        compound.setString("IncomingEyeInitiatorName", incomingEyeInitiatorName);
+        compound.setBoolean("IncomingEyeConsentGiven", incomingEyeConsentGiven);
+        if (incomingEyeInitiatorPlayerUuid != null) {
+            compound.setUniqueId("IncomingEyeInitiatorPlayer", incomingEyeInitiatorPlayerUuid);
+        }
+        if (incomingEyeInitiatorPos != null) {
+            compound.setInteger("IncomingEyeInitiatorPosX", incomingEyeInitiatorPos.getX());
+            compound.setInteger("IncomingEyeInitiatorPosY", incomingEyeInitiatorPos.getY());
+            compound.setInteger("IncomingEyeInitiatorPosZ", incomingEyeInitiatorPos.getZ());
+        }
         return compound;
     }
 
