@@ -3,6 +3,7 @@
 [![Minecraft Version](https://img.shields.io/badge/Minecraft-1.12.2-blue.svg)](https://minecraft.net/)
 [![Forge](https://img.shields.io/badge/ModLoader-Forge-orange.svg)](https://files.minecraftforge.net/)
 [![Release](https://img.shields.io/badge/Version-1.6.1--beta-purple.svg)](https://github.com/kimarsen/spatial-shift/releases)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Spatial Shift** — модификация, созданная в уникальном сеттинге авторского Minecraft-сервера (*кто знает — тот в курсе*). Мод привносит в игру технологии пространственного сдвига и древние артефакты Бездны, позволяя совершать контролируемые квантовые прыжки целых баз, крепостей и кораблей на любые расстояния.
 
@@ -30,6 +31,7 @@
    - [Осколок «Божественного взгляда»](#осколок-божественного-взгляда)
    - [Преобразованный Императорский Глаз](#преобразованный-императорский-глаз)
 7. [Установка](#-установка)
+8. [Лицензия](#-лицензия)
 
 ---
 
@@ -179,3 +181,9 @@
 2. Скачайте файл модификации: [`spatialshift-1.6.1-beta.jar`](https://github.com/kimarsen/spatial-shift/releases/tag/v1.6.1-beta).
 3. Поместите файл в папку `.minecraft/mods/`.
 4. Запустите игру.
+
+---
+
+## 📄 Лицензия
+
+Проект распространяется под лицензией [MIT](LICENSE).
